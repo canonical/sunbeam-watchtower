@@ -231,6 +231,62 @@ func TestCachedTrackerSyncStoresBugTagsOnTasks(t *testing.T) {
 	}
 }
 
+func TestCachedTrackerGetBugFreshBypassesStaleTaskStatus(t *testing.T) {
+	mock := newMockBugTracker()
+	mock.bugs["1"] = &forge.Bug{
+		Forge: forge.ForgeLaunchpad,
+		ID:    "1",
+		Title: "Bug 1",
+		Tasks: []forge.BugTask{{BugID: "1", TargetName: "proj/2024.1", Status: "New", SelfLink: "/task/1"}},
+	}
+	mock.tasks["proj"] = []forge.BugTask{{
+		Forge: forge.ForgeLaunchpad, BugID: "1", TargetName: "proj/2024.1", Status: "New", SelfLink: "/task/1",
+	}}
+
+	ct := newTestCachedTracker(t, mock, "proj")
+	ctx := context.Background()
+	if _, err := ct.Sync(ctx); err != nil {
+		t.Fatal(err)
+	}
+	mock.bugs["1"].Tasks[0].Status = "Fix Committed"
+
+	cached, err := ct.GetBug(ctx, "1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cached.Tasks[0].Status != "New" {
+		t.Fatalf("cached status = %q, want New", cached.Tasks[0].Status)
+	}
+	preview, err := ct.GetBugFresh(ctx, "1", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview.Tasks[0].Status != "Fix Committed" {
+		t.Fatalf("preview status = %q, want Fix Committed", preview.Tasks[0].Status)
+	}
+	stillCached, err := ct.GetBug(ctx, "1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stillCached.Tasks[0].Status != "New" {
+		t.Fatalf("dry-run refreshed cached status = %q, want New", stillCached.Tasks[0].Status)
+	}
+	fresh, err := ct.GetBugFresh(ctx, "1", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fresh.Tasks[0].Status != "Fix Committed" || fresh.Provenance.Source != "remote" {
+		t.Fatalf("fresh bug = %+v", fresh)
+	}
+	refreshed, err := ct.GetBug(ctx, "1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if refreshed.Tasks[0].Status != "Fix Committed" {
+		t.Fatalf("refreshed cached status = %q, want Fix Committed", refreshed.Tasks[0].Status)
+	}
+}
+
 func TestCachedTrackerWriteThrough(t *testing.T) {
 	mock := newMockBugTracker()
 	mock.bugs["5"] = &forge.Bug{Forge: forge.ForgeLaunchpad, ID: "5", Title: "Bug 5"}

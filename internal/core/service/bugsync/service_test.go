@@ -264,6 +264,37 @@ func TestSync_DoesNotReviveUnsupportedSeries(t *testing.T) {
 	}
 }
 
+func TestSync_UsesFreshTaskStatusForPlanning(t *testing.T) {
+	source := &mockCommitSource{
+		branches: []string{"stable/2024.1"},
+		commits: map[string][]forge.Commit{
+			"stable/2024.1": {{SHA: "fix", BugRefs: []forge.BugRef{{ID: "12345", Type: forge.BugRefCloses}}}},
+		},
+	}
+	stale := &forge.Bug{ID: "12345", Tasks: []forge.BugTask{{
+		BugID: "12345", TargetName: "snap-openstack/2024.1", Status: "New", SelfLink: "task",
+	}}}
+	fresh := &forge.Bug{ID: "12345", Tasks: []forge.BugTask{{
+		BugID: "12345", TargetName: "snap-openstack/2024.1", Status: "Fix Committed", SelfLink: "task",
+	}}}
+	tracker := &mockBugTracker{
+		bugs: map[string]*forge.Bug{"12345": stale}, freshBugs: map[string]*forge.Bug{"12345": fresh},
+	}
+	svc := NewService(map[string]port.CommitSource{"openstack": source}, tracker, nil,
+		map[string][]string{"openstack": {"snap-openstack"}}, nil).
+		WithProjectPolicy(nil, map[string][]string{"snap-openstack": {"2024.1"}})
+
+	result, err := svc.Sync(context.Background(), SyncOptions{DryRun: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, action := range result.Actions {
+		if action.ActionType == ActionStatusUpdate {
+			t.Fatalf("stale status produced action: %+v", action)
+		}
+	}
+}
+
 func (m *mockCommitSource) ListMRCommits(_ context.Context) ([]forge.Commit, error) {
 	return nil, nil
 }
@@ -291,6 +322,7 @@ func toSources(sources map[string]testProjectSource) map[string]port.CommitSourc
 // mockBugTracker implements port.BugTracker for testing.
 type mockBugTracker struct {
 	bugs           map[string]*forge.Bug
+	freshBugs      map[string]*forge.Bug
 	updatedTasks   []taskUpdate
 	assignments    []assignment
 	project        *forge.Project
@@ -319,6 +351,13 @@ func (m *mockBugTracker) GetBug(_ context.Context, id string) (*forge.Bug, error
 		return nil, fmt.Errorf("bug %s not found", id)
 	}
 	return bug, nil
+}
+
+func (m *mockBugTracker) GetBugFresh(ctx context.Context, id string, _ bool) (*forge.Bug, error) {
+	if bug, ok := m.freshBugs[id]; ok {
+		return bug, nil
+	}
+	return m.GetBug(ctx, id)
 }
 
 func (m *mockBugTracker) ListBugTasks(_ context.Context, _ string, opts forge.ListBugTasksOpts) ([]forge.BugTask, error) {

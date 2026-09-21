@@ -76,6 +76,31 @@ func (c *CachedBugTracker) GetBug(ctx context.Context, id string) (*forge.Bug, e
 	return bug, err
 }
 
+// GetBugFresh bypasses cached task state for workflows that may mutate the
+// upstream tracker. Planning writes from stale statuses can otherwise produce
+// redundant or incorrect actions.
+func (c *CachedBugTracker) GetBugFresh(ctx context.Context, id string, refreshCache bool) (*forge.Bug, error) {
+	bug, err := c.inner.GetBug(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	bug.Provenance = &forge.BugProvenance{
+		Source:     "remote",
+		VerifiedAt: time.Now().UTC(),
+	}
+	if refreshCache && c.isSynced(ctx) {
+		if cacheErr := c.cache.StoreBugs(ctx, []*forge.Bug{bug}); cacheErr != nil {
+			c.logger.Warn("failed to refresh cached bug metadata", "id", id, "error", cacheErr)
+		}
+		for i := range bug.Tasks {
+			if cacheErr := c.cache.UpdateTask(ctx, c.inner.Type(), &bug.Tasks[i]); cacheErr != nil {
+				c.logger.Warn("failed to refresh cached bug task", "id", id, "task", bug.Tasks[i].SelfLink, "error", cacheErr)
+			}
+		}
+	}
+	return bug, nil
+}
+
 func (c *CachedBugTracker) ListBugTasks(ctx context.Context, project string, opts forge.ListBugTasksOpts) ([]forge.BugTask, error) {
 	if c.isSynced(ctx) {
 		tasks, err := c.cache.ListBugTasks(ctx, c.inner.Type(), project, opts)
@@ -290,11 +315,8 @@ func (c *CachedBugTracker) updateCachedTaskStatus(ctx context.Context, selfLink,
 	for i := range tasks {
 		if tasks[i].SelfLink == selfLink {
 			tasks[i].Status = newStatus
-			cacheImpl, ok := c.cache.(*Cache)
-			if ok {
-				if uErr := cacheImpl.UpdateTask(ctx, forgeType, &tasks[i]); uErr != nil {
-					c.logger.Warn("failed to update cached task status", "selfLink", selfLink, "error", uErr)
-				}
+			if uErr := c.cache.UpdateTask(ctx, forgeType, &tasks[i]); uErr != nil {
+				c.logger.Warn("failed to update cached task status", "selfLink", selfLink, "error", uErr)
 			}
 			return
 		}

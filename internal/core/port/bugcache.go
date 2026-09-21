@@ -21,6 +21,9 @@ type BugCache interface {
 	// StoreBugTasks replaces all cached tasks for a (forge, project) pair.
 	StoreBugTasks(ctx context.Context, forgeType forge.ForgeType, project string, tasks []forge.BugTask) error
 
+	// UpdateTask refreshes an existing cached task identified by self link.
+	UpdateTask(ctx context.Context, forgeType forge.ForgeType, task *forge.BugTask) error
+
 	// ReplaceProject atomically stores one complete tracker-project snapshot
 	// and its cache metadata.
 	ReplaceProject(ctx context.Context, forgeType forge.ForgeType, project string, bugs []*forge.Bug, tasks []forge.BugTask, syncedAt time.Time, schemaVersion int) error

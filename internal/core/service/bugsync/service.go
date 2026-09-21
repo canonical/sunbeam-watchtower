@@ -231,7 +231,7 @@ func (s *Service) Sync(ctx context.Context, opts SyncOptions) (*SyncResult, erro
 			continue
 		}
 
-		bug, err := s.bugTracker.GetBug(ctx, bugID)
+		bug, err := s.getCurrentBug(ctx, bugID, !opts.DryRun)
 		if err != nil {
 			s.logger.Warn("failed to fetch bug", "bug_id", bugID, "error", err)
 			result.Errors = append(result.Errors, fmt.Errorf("bug %s: %w", bugID, err))
@@ -247,7 +247,7 @@ func (s *Service) Sync(ctx context.Context, opts SyncOptions) (*SyncResult, erro
 
 		// Re-fetch bug after potential task additions to get updated task list.
 		if !opts.DryRun {
-			bug, err = s.bugTracker.GetBug(ctx, bugID)
+			bug, err = s.getCurrentBug(ctx, bugID, true)
 			if err != nil {
 				s.logger.Warn("failed to re-fetch bug after task addition", "bug_id", bugID, "error", err)
 				result.Errors = append(result.Errors, fmt.Errorf("bug %s: %w", bugID, err))
@@ -265,7 +265,7 @@ func (s *Service) Sync(ctx context.Context, opts SyncOptions) (*SyncResult, erro
 			result.Errors = append(result.Errors, err)
 		}
 		if !opts.DryRun {
-			bug, err = s.bugTracker.GetBug(ctx, bugID)
+			bug, err = s.getCurrentBug(ctx, bugID, true)
 			if err != nil {
 				result.Errors = append(result.Errors, fmt.Errorf("bug %s: re-fetching after series assignment: %w", bugID, err))
 				continue
@@ -363,6 +363,13 @@ func appendPlannedTasks(bug *forge.Bug, actions []SyncAction) {
 			BugID: action.BugID, TargetName: target, Title: target, Status: "New",
 		})
 	}
+}
+
+func (s *Service) getCurrentBug(ctx context.Context, bugID string, refreshCache bool) (*forge.Bug, error) {
+	if fresh, ok := s.bugTracker.(port.FreshBugReader); ok {
+		return fresh.GetBugFresh(ctx, bugID, refreshCache)
+	}
+	return s.bugTracker.GetBug(ctx, bugID)
 }
 
 func hasActionableEvidence(branches []BugBranch) bool {

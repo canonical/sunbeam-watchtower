@@ -19,3 +19,9 @@ type BugTracker interface {
 	GetProjectSeries(ctx context.Context, projectName string) ([]forge.ProjectSeries, error)
 	GetProject(ctx context.Context, projectName string) (*forge.Project, error)
 }
+
+// FreshBugReader is implemented by cache-decorated trackers that can bypass
+// cached state for mutation planning. Read-only workflows remain cache-first.
+type FreshBugReader interface {
+	GetBugFresh(ctx context.Context, id string, refreshCache bool) (*forge.Bug, error)
+}

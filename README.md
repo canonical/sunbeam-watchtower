@@ -528,6 +528,11 @@ when an older series is released before a newer configured series. Release
 decisions are cache-first, so refresh both Git and release caches beforehand.
 Historical series that are not configured are left untouched even when their
 Git branches or Launchpad tasks still exist.
+Git and release evidence is cache-first, while bug sync verifies current task
+statuses live before planning changes so a stale bug cache cannot produce a
+redundant status update. Verified statuses are written through to existing
+cached task rows during apply; dry-run remains side-effect free and
+`watchtower cache sync bugs` remains the bulk refresh path.
 
 ### `watchtower build`
 

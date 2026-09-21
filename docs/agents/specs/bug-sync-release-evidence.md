@@ -57,3 +57,12 @@ does not block the authoritative older-series update.
 plan without mutation. Empty bug IDs mean all discovered bugs. Actions include
 human-readable reasons and structured channel, revision, tag, and commit
 evidence where applicable.
+
+Commit and release discovery is cache-first, but current Launchpad bug/task
+status is fetched live before planning. A mutating workflow must not propose
+updates from a stale bug-cache snapshot. Ordinary bug list, show, and search
+operations remain cache-first. During an apply, successfully fetched live
+metadata and existing task rows are written through to the bug cache so later
+reads see the verified state. Dry-run remains side-effect free, and full cache
+synchronization remains responsible for discovering tasks that are not already
+cached.
