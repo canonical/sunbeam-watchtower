@@ -395,7 +395,7 @@ func (s *Service) collectReleasedBugs(ctx context.Context, result *SyncResult, b
 	for bugID, branches := range bugBranches {
 		for _, branch := range branches {
 			series := branchToSeriesName(branch.Branch)
-			if series != "" && series != "development" && branch.RefType != forge.BugRefRelated {
+			if series != "" && series != "development" && branch.RefType != forge.BugRefRelated && s.sourceSupportsSeries(branch.Project, series) {
 				if neededSeries[branch.Project] == nil {
 					neededSeries[branch.Project] = make(map[string]bool)
 				}
@@ -493,6 +493,9 @@ func (s *Service) collectReleasedBugs(ctx context.Context, result *SyncResult, b
 
 func (s *Service) targetStatus(task forge.BugTask, branches []BugBranch, released map[string]map[string]map[string]releaseEvidence) (string, string, *releaseEvidence) {
 	target, series := taskTarget(task)
+	if series != "" && series != "development" && !s.supportsSeries(target, series) {
+		return "", "", nil
+	}
 	type component struct {
 		project  string
 		status   string
@@ -588,6 +591,25 @@ func taskTarget(task forge.BugTask) (string, string) {
 func containsString(values []string, value string) bool {
 	for _, candidate := range values {
 		if candidate == value {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Service) supportsSeries(project, series string) bool {
+	if series == "development" || len(s.configuredSeries) == 0 {
+		return true
+	}
+	return containsString(s.configuredSeries[project], series)
+}
+
+func (s *Service) sourceSupportsSeries(project, series string) bool {
+	if len(s.configuredSeries) == 0 {
+		return true
+	}
+	for _, lpProject := range s.lpProjectMap[project] {
+		if s.supportsSeries(lpProject, series) {
 			return true
 		}
 	}
@@ -847,6 +869,9 @@ func (s *Service) assignToSeries(ctx context.Context, bugID string, bug *forge.B
 			mappedProjects = legacyProjects
 		}
 		for _, lpProject := range mappedProjects {
+			if seriesName != "development" && !s.supportsSeries(lpProject, seriesName) {
+				continue
+			}
 			key := lpProject + "/" + seriesName
 			needed[key] = target{project: lpProject, series: seriesName, source: bb.Project}
 		}

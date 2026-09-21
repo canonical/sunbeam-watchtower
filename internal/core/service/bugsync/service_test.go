@@ -225,6 +225,45 @@ func TestSync_DivergentPublishedTargetsStayFixCommitted(t *testing.T) {
 	}
 }
 
+func TestSync_DoesNotReviveUnsupportedSeries(t *testing.T) {
+	for _, withSeriesTask := range []bool{false, true} {
+		name := "missing task"
+		if withSeriesTask {
+			name = "existing task"
+		}
+		t.Run(name, func(t *testing.T) {
+			source := &mockCommitSource{
+				branches: []string{"stable/2023.1"},
+				commits: map[string][]forge.Commit{
+					"stable/2023.1": {{SHA: "old-fix", BugRefs: []forge.BugRef{{ID: "12345", Type: forge.BugRefCloses}}}},
+				},
+			}
+			tasks := []forge.BugTask{{BugID: "12345", TargetName: "snap-openstack", Status: "Fix Released", SelfLink: "project"}}
+			if withSeriesTask {
+				tasks = append(tasks, forge.BugTask{
+					BugID: "12345", TargetName: "snap-openstack/2023.1", Status: "New", SelfLink: "unsupported-series",
+				})
+			}
+			tracker := &mockBugTracker{bugs: map[string]*forge.Bug{"12345": {ID: "12345", Tasks: tasks}}}
+			svc := NewService(map[string]port.CommitSource{"openstack": source}, tracker, nil,
+				map[string][]string{"openstack": {"snap-openstack"}}, nil).
+				WithProjectPolicy(map[string]bool{"snap-openstack": true}, map[string][]string{
+					"snap-openstack": {"2024.1", "2025.1", "2026.1"},
+				})
+
+			result, err := svc.Sync(context.Background(), SyncOptions{DryRun: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, action := range result.Actions {
+				if action.Series == "2023.1" || (action.ActionType == ActionStatusUpdate && action.TaskTitle == "snap-openstack/2023.1") {
+					t.Fatalf("unsupported series action = %+v", action)
+				}
+			}
+		})
+	}
+}
+
 func (m *mockCommitSource) ListMRCommits(_ context.Context) ([]forge.Commit, error) {
 	return nil, nil
 }

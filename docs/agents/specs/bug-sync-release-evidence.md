@@ -37,6 +37,10 @@ Release tracks map to Launchpad series by `release.track_map`, or by identical
 name when no mapping exists. Risks below stable, branch channels, and
 non-version tracks do not establish `Fix Released`.
 
+Configured series are an allow-list. Historical Git branches and existing
+Launchpad series tasks outside that list are left untouched and are never
+re-created or advanced by synchronization.
+
 Missing release cache data, tags, or commits are warnings. They must fall back
 to `Fix Committed` and must never guess that a fix was released.
 

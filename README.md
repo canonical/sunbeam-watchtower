@@ -526,6 +526,8 @@ all configured and future series rather than a fixed release list. Shared bug
 group tasks aggregate all affected components. Sync warns, but does not block,
 when an older series is released before a newer configured series. Release
 decisions are cache-first, so refresh both Git and release caches beforehand.
+Historical series that are not configured are left untouched even when their
+Git branches or Launchpad tasks still exist.
 
 ### `watchtower build`
 
