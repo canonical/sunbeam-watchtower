@@ -112,12 +112,11 @@ func (c *Cache) EnsureRepo(ctx context.Context, cloneURL string, opts *dto.SyncO
 		return "", fmt.Errorf("cloning %s: %w", cloneURL, err)
 	}
 
-	// After initial clone, fetch extra refspecs if provided.
-	if opts != nil && len(opts.ExtraRefSpecs) > 0 {
-		c.logger.Debug("fetching extra refspecs after clone", "url", cloneURL, "refspecs", opts.ExtraRefSpecs)
-		if fetchErr := c.fetchRepo(ctx, path, opts); fetchErr != nil {
-			return "", fetchErr
-		}
+	// Fetch the canonical branch and tag refspecs after cloning too. In
+	// particular, default tag-following does not guarantee that a revision tag
+	// added without a branch update is present in the cache.
+	if fetchErr := c.fetchRepo(ctx, path, opts); fetchErr != nil {
+		return "", fetchErr
 	}
 
 	return path, nil
@@ -155,6 +154,17 @@ func (c *Cache) fetchRepo(ctx context.Context, path string, opts *dto.SyncOption
 		return fmt.Errorf("fetching branch refs: %w", err)
 	}
 
+	// Snap build revisions are represented by repository tags (for example,
+	// rev1101). Fetch tags explicitly instead of relying on tag-following.
+	err = repo.FetchContext(ctx, &git.FetchOptions{
+		RefSpecs: []gitconfig.RefSpec{
+			gitconfig.RefSpec("+refs/tags/*:refs/tags/*"),
+		},
+	})
+	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
+		return fmt.Errorf("fetching tags: %w", err)
+	}
+
 	// Fetch extra refspecs if provided.
 	if opts != nil && len(opts.ExtraRefSpecs) > 0 {
 		refSpecs := make([]gitconfig.RefSpec, len(opts.ExtraRefSpecs))
@@ -186,27 +196,40 @@ func (c *Cache) ListCommits(ctx context.Context, cloneURL string, opts forge.Lis
 		return nil, fmt.Errorf("opening repo at %s: %w", path, err)
 	}
 
-	// Resolve the branch to a remote ref.
+	// Resolve an explicit revision (normally refs/tags/revN for release
+	// provenance) or fall back to the requested remote branch.
+	var from plumbing.Hash
+	if opts.Revision != "" {
+		revision := plumbing.Revision(opts.Revision)
+		resolved, resolveErr := repo.ResolveRevision(revision)
+		if resolveErr != nil {
+			return nil, fmt.Errorf("resolving revision %s: %w", opts.Revision, resolveErr)
+		}
+		from = *resolved
+	}
+
 	branch := opts.Branch
 	if branch == "" {
 		branch = "main"
 	}
-
-	refName := plumbing.NewRemoteReferenceName("origin", branch)
-	ref, err := repo.Reference(refName, true)
-	if err != nil {
-		// Try "master" as fallback if "main" was the default.
-		if opts.Branch == "" {
-			refName = plumbing.NewRemoteReferenceName("origin", "master")
-			ref, err = repo.Reference(refName, true)
+	if from.IsZero() {
+		refName := plumbing.NewRemoteReferenceName("origin", branch)
+		ref, refErr := repo.Reference(refName, true)
+		if refErr != nil {
+			// Try "master" as fallback if "main" was the default.
+			if opts.Branch == "" {
+				refName = plumbing.NewRemoteReferenceName("origin", "master")
+				ref, refErr = repo.Reference(refName, true)
+			}
+			if refErr != nil {
+				return nil, fmt.Errorf("resolving ref %s: %w", refName, refErr)
+			}
 		}
-		if err != nil {
-			return nil, fmt.Errorf("resolving ref %s: %w", refName, err)
-		}
+		from = ref.Hash()
 	}
 
 	logOpts := &git.LogOptions{
-		From:  ref.Hash(),
+		From:  from,
 		Order: git.LogOrderCommitterTime,
 	}
 	if opts.Since != nil {

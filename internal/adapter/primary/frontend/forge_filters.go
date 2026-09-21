@@ -6,6 +6,8 @@ package frontend
 import (
 	"errors"
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 
 	forge "github.com/gboutry/sunbeam-watchtower/pkg/forge/v1"
@@ -16,6 +18,27 @@ var ErrNoBugTrackerConfigured = errors.New("no bug tracker configured")
 
 // ErrInvalidBugSyncSince is returned when one bug sync request uses an invalid RFC 3339 timestamp.
 var ErrInvalidBugSyncSince = errors.New("invalid since value: expected RFC 3339 timestamp")
+
+// ErrInvalidBugID is returned when bug sync receives a non-numeric LP bug ID.
+var ErrInvalidBugID = errors.New("invalid Launchpad bug ID")
+
+func normalizeBugIDs(values []string) ([]string, error) {
+	set := make(map[string]bool, len(values))
+	for _, value := range values {
+		value = strings.TrimPrefix(strings.TrimSpace(value), "#")
+		id, err := strconv.Atoi(value)
+		if err != nil || id <= 0 {
+			return nil, fmt.Errorf("%w %q", ErrInvalidBugID, value)
+		}
+		set[strconv.Itoa(id)] = true
+	}
+	out := make([]string, 0, len(set))
+	for value := range set {
+		out = append(out, value)
+	}
+	sort.Strings(out)
+	return out, nil
+}
 
 func parseMergeState(s string) (forge.MergeState, error) {
 	switch strings.ToLower(s) {

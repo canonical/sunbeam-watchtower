@@ -206,12 +206,13 @@ func newBugSyncCmd(opts *Options) *cobra.Command {
 	)
 
 	cmd := withActionSelector(&cobra.Command{
-		Use:   "sync",
+		Use:   "sync [bug-id...]",
 		Short: "Update LP bug statuses from cached commits",
-		Long:  "Scans cached commits for LP bug references and updates bug task statuses to Fix Committed. Also assigns bugs to the appropriate LP series based on which branches contain the fix.",
+		Long:  "Scans cached commits for LP bug references, ensures mapped project tasks, and updates statuses to Fix Committed or Fix Released when stable snap revision tags prove publication. With bug IDs and --project, the projects explicitly declare the affected scope.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			result, err := opts.Frontend().Bugs().Sync(cmd.Context(), frontend.BugSyncRequest{
 				Projects: projects,
+				BugIDs:   args,
 				DryRun:   dryRun,
 				Since:    since,
 			})

@@ -71,6 +71,7 @@ type BugTask struct {
 	URL             string    `json:"url"`
 	SelfLink        string    `json:"self_link,omitempty"`
 	TargetName      string    `json:"target_name,omitempty"`
+	TargetLink      string    `json:"target_link,omitempty"`
 	Private         bool      `json:"private,omitempty"`
 	SecurityRelated bool      `json:"security_related,omitempty"`
 	InformationType string    `json:"information_type,omitempty"`

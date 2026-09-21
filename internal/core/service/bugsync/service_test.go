@@ -6,6 +6,7 @@ package bugsync
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,17 +18,211 @@ import (
 type mockCommitSource struct {
 	forgeType forge.ForgeType
 	commits   map[string][]forge.Commit // branch → commits
+	revisions map[string][]forge.Commit // tag/revision → commits
 	branches  []string
 }
 
 func (m *mockCommitSource) ForgeType() forge.ForgeType { return m.forgeType }
 
 func (m *mockCommitSource) ListCommits(_ context.Context, opts forge.ListCommitsOpts) ([]forge.Commit, error) {
+	if opts.Revision != "" {
+		commits, ok := m.revisions[opts.Revision]
+		if !ok {
+			return nil, fmt.Errorf("revision %s not found", opts.Revision)
+		}
+		return commits, nil
+	}
 	branch := opts.Branch
 	if branch == "" {
 		branch = "main"
 	}
 	return m.commits[branch], nil
+}
+
+func TestSync_StableRevisionMarksOnlyMatchingSeriesReleased(t *testing.T) {
+	const tag = "refs/tags/rev1101^{}"
+	source := &mockCommitSource{
+		branches: []string{"stable/2024.1"},
+		commits: map[string][]forge.Commit{
+			"stable/2024.1": {{SHA: "newer", BugRefs: []forge.BugRef{{ID: "12345", Type: forge.BugRefCloses}}}},
+		},
+		revisions: map[string][]forge.Commit{
+			tag: {{SHA: "released", BugRefs: []forge.BugRef{{ID: "12345", Type: forge.BugRefCloses}}}},
+		},
+	}
+	tracker := &mockBugTracker{bugs: map[string]*forge.Bug{
+		"12345": {ID: "12345", Tasks: []forge.BugTask{
+			{BugID: "12345", TargetName: "snap-openstack", TargetLink: "https://api.launchpad.net/devel/snap-openstack/2024.1", Status: "Fix Committed", SelfLink: "task-2024"},
+			{BugID: "12345", TargetName: "snap-openstack", TargetLink: "https://api.launchpad.net/devel/snap-openstack/2025.1", Status: "Fix Committed", SelfLink: "task-2025"},
+		}},
+	}}
+	svc := NewService(
+		map[string]port.CommitSource{"openstack": source}, tracker, nil,
+		map[string][]string{"openstack": {"snap-openstack"}}, nil,
+	).WithReleaseEvidence([]ReleaseBoundary{{
+		Project: "openstack", Series: "2024.1", Channel: "2024.1/stable", Revision: 1101, Tag: "rev1101",
+	}}).WithProjectPolicy(map[string]bool{"snap-openstack": true}, map[string][]string{"snap-openstack": {"2024.1"}})
+
+	result, err := svc.Sync(context.Background(), SyncOptions{DryRun: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var released *SyncAction
+	for i := range result.Actions {
+		if result.Actions[i].ActionType == ActionStatusUpdate {
+			if result.Actions[i].Series == "2025.1" {
+				t.Fatalf("2025.1 unexpectedly updated: %+v", result.Actions[i])
+			}
+			released = &result.Actions[i]
+		}
+	}
+	if released == nil || released.NewStatus != "Fix Released" || released.Revision != 1101 || released.Tag != "rev1101" {
+		t.Fatalf("release action = %+v", released)
+	}
+}
+
+func TestSync_SharedTaskUsesLeastAdvancedComponent(t *testing.T) {
+	sources := map[string]port.CommitSource{
+		"openstack": &mockCommitSource{branches: []string{"stable/2024.1"}, commits: map[string][]forge.Commit{
+			"stable/2024.1": {{SHA: "snap-fix", BugRefs: []forge.BugRef{{ID: "12345", Type: forge.BugRefCloses}}}},
+		}},
+		"openstack-hypervisor": &mockCommitSource{branches: []string{"stable/2024.1"}, commits: map[string][]forge.Commit{
+			"stable/2024.1": {{SHA: "partial", BugRefs: []forge.BugRef{{ID: "12345", Type: forge.BugRefPartial}}}},
+		}},
+	}
+	tracker := &mockBugTracker{bugs: map[string]*forge.Bug{
+		"12345": {ID: "12345", Tasks: []forge.BugTask{
+			{BugID: "12345", TargetName: "snap-openstack", TargetLink: "https://api.launchpad.net/devel/snap-openstack/2024.1", Status: "New", SelfLink: "common"},
+			{BugID: "12345", TargetName: "snap-openstack-hypervisor", TargetLink: "https://api.launchpad.net/devel/snap-openstack-hypervisor/2024.1", Status: "New", SelfLink: "hypervisor"},
+		}},
+	}}
+	svc := NewService(sources, tracker, nil, map[string][]string{
+		"openstack":            {"snap-openstack"},
+		"openstack-hypervisor": {"snap-openstack", "snap-openstack-hypervisor"},
+	}, nil).WithProjectPolicy(map[string]bool{"snap-openstack": true}, nil)
+
+	result, err := svc.Sync(context.Background(), SyncOptions{DryRun: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	statuses := make(map[string]string)
+	for _, action := range result.Actions {
+		if action.ActionType == ActionStatusUpdate {
+			statuses[action.Project] = action.NewStatus
+		}
+	}
+	if statuses["snap-openstack"] != "In Progress" {
+		t.Fatalf("shared status = %q, want In Progress", statuses["snap-openstack"])
+	}
+	if statuses["snap-openstack-hypervisor"] != "In Progress" {
+		t.Fatalf("hypervisor status = %q, want In Progress", statuses["snap-openstack-hypervisor"])
+	}
+}
+
+func TestSync_ExplicitProjectsEnsureMappedTasks(t *testing.T) {
+	sources := map[string]port.CommitSource{
+		"openstack":            &mockCommitSource{},
+		"openstack-hypervisor": &mockCommitSource{},
+		"sunbeam-charms":       &mockCommitSource{},
+	}
+	tracker := &mockBugTracker{
+		bugs: map[string]*forge.Bug{"12345": {ID: "12345", Tasks: []forge.BugTask{{BugID: "12345", TargetName: "snap-openstack"}}}},
+		projects: map[string]*forge.Project{
+			"snap-openstack-hypervisor": {Name: "snap-openstack-hypervisor", SelfLink: "lp:hypervisor"},
+			"sunbeam-charms":            {Name: "sunbeam-charms", SelfLink: "lp:charms"},
+		},
+	}
+	svc := NewService(sources, tracker, nil, map[string][]string{
+		"openstack":            {"snap-openstack"},
+		"openstack-hypervisor": {"snap-openstack", "snap-openstack-hypervisor"},
+		"sunbeam-charms":       {"snap-openstack", "sunbeam-charms"},
+	}, nil)
+	result, err := svc.Sync(context.Background(), SyncOptions{
+		BugIDs: []string{"12345"}, Projects: []string{"openstack", "openstack-hypervisor", "sunbeam-charms"}, DryRun: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	added := make(map[string]bool)
+	for _, action := range result.Actions {
+		if action.ActionType == ActionAddProjectTask {
+			added[action.Project] = true
+		}
+	}
+	if !added["snap-openstack-hypervisor"] || !added["sunbeam-charms"] || added["snap-openstack"] {
+		t.Fatalf("added tasks = %+v", added)
+	}
+}
+
+func TestSync_WarnsWhenOlderSeriesReleasedFirst(t *testing.T) {
+	const tag = "refs/tags/rev1101^{}"
+	source := &mockCommitSource{
+		branches: []string{"stable/2024.1", "stable/2025.1"},
+		commits: map[string][]forge.Commit{
+			"stable/2024.1": {{SHA: "old", BugRefs: []forge.BugRef{{ID: "12345", Type: forge.BugRefCloses}}}},
+			"stable/2025.1": {{SHA: "new", BugRefs: []forge.BugRef{{ID: "12345", Type: forge.BugRefCloses}}}},
+		},
+		revisions: map[string][]forge.Commit{tag: {{SHA: "old", BugRefs: []forge.BugRef{{ID: "12345", Type: forge.BugRefCloses}}}}},
+	}
+	tracker := &mockBugTracker{bugs: map[string]*forge.Bug{
+		"12345": {ID: "12345", Tasks: []forge.BugTask{
+			{BugID: "12345", TargetName: "snap-openstack/2024.1", Status: "Fix Committed", SelfLink: "old"},
+			{BugID: "12345", TargetName: "snap-openstack/2025.1", Status: "Fix Committed", SelfLink: "new"},
+		}},
+	}}
+	svc := NewService(map[string]port.CommitSource{"openstack": source}, tracker, nil,
+		map[string][]string{"openstack": {"snap-openstack"}}, nil).
+		WithReleaseEvidence([]ReleaseBoundary{{Project: "openstack", Series: "2024.1", Channel: "2024.1/stable", Revision: 1101, Tag: "rev1101"}}).
+		WithProjectPolicy(map[string]bool{"snap-openstack": true}, map[string][]string{"snap-openstack": {"2024.1", "2025.1", "2026.1"}})
+	result, err := svc.Sync(context.Background(), SyncOptions{DryRun: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, warning := range result.Errors {
+		if strings.Contains(warning.Error(), "before newer series 2025.1=Fix Committed, 2026.1=missing task") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("warnings = %+v, want release-order warning", result.Errors)
+	}
+}
+
+func TestSync_DivergentPublishedTargetsStayFixCommitted(t *testing.T) {
+	source := &mockCommitSource{
+		branches: []string{"stable/2024.1"},
+		commits:  map[string][]forge.Commit{"stable/2024.1": {{SHA: "fix", BugRefs: []forge.BugRef{{ID: "12345", Type: forge.BugRefCloses}}}}},
+		revisions: map[string][]forge.Commit{
+			"refs/tags/rev10^{}": {{SHA: "with-fix", BugRefs: []forge.BugRef{{ID: "12345", Type: forge.BugRefCloses}}}},
+			"refs/tags/rev11^{}": {{SHA: "without-fix"}},
+		},
+	}
+	tracker := &mockBugTracker{bugs: map[string]*forge.Bug{"12345": {
+		ID: "12345", Tasks: []forge.BugTask{{BugID: "12345", TargetName: "snap-openstack/2024.1", Status: "New", SelfLink: "task"}},
+	}}}
+	svc := NewService(map[string]port.CommitSource{"openstack": source}, tracker, nil,
+		map[string][]string{"openstack": {"snap-openstack"}}, nil).
+		WithReleaseEvidence([]ReleaseBoundary{
+			{Project: "openstack", Series: "2024.1", Channel: "2024.1/stable", Revision: 10, Tag: "rev10"},
+			{Project: "openstack", Series: "2024.1", Channel: "2024.1/stable", Revision: 11, Tag: "rev11"},
+		})
+	result, err := svc.Sync(context.Background(), SyncOptions{DryRun: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, action := range result.Actions {
+		if action.ActionType == ActionStatusUpdate && action.NewStatus != "Fix Committed" {
+			t.Fatalf("status action = %+v, want Fix Committed", action)
+		}
+	}
+	found := false
+	for _, warning := range result.Errors {
+		found = found || strings.Contains(warning.Error(), "targets disagree")
+	}
+	if !found {
+		t.Fatalf("warnings = %+v, want target disagreement", result.Errors)
+	}
 }
 
 func (m *mockCommitSource) ListMRCommits(_ context.Context) ([]forge.Commit, error) {
@@ -787,6 +982,16 @@ func TestIsRelevantBranch(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("isRelevantBranch(%q) = %v, want %v", tt.branch, got, tt.want)
 		}
+	}
+}
+
+func TestTaskTargetUsesLaunchpadTargetLinkForSeries(t *testing.T) {
+	project, series := taskTarget(forge.BugTask{
+		TargetName: "snap-openstack",
+		TargetLink: "https://api.launchpad.net/devel/snap-openstack/2024.1",
+	})
+	if project != "snap-openstack" || series != "2024.1" {
+		t.Fatalf("taskTarget() = %q, %q", project, series)
 	}
 }
 

@@ -40,6 +40,22 @@ func TestRenderReleaseList_ColorizesTableOutput(t *testing.T) {
 	}
 }
 
+func TestRenderBugSyncTableIncludesReason(t *testing.T) {
+	var out bytes.Buffer
+	result := &dto.BugSyncResult{Actions: []dto.BugSyncAction{{
+		BugID: "12345", TaskTitle: "snap-openstack/2024.1", OldStatus: "Fix Committed",
+		NewStatus: "Fix Released", ActionType: dto.BugSyncActionStatusUpdate,
+		Reason: "included in 2024.1/stable revision 1101 (rev1101)",
+	}}}
+	if err := renderBugSyncResult(&out, "table", newOutputStyler(false), result, true); err != nil {
+		t.Fatal(err)
+	}
+	got := out.String()
+	if !strings.Contains(got, "would update:") || !strings.Contains(got, "reason: included in 2024.1/stable revision 1101") {
+		t.Fatalf("output = %q", got)
+	}
+}
+
 func TestRenderReleaseList_JSONRemainsPlain(t *testing.T) {
 	var out bytes.Buffer
 	err := renderReleaseList(&out, "json", newOutputStyler(true), []dto.ReleaseListEntry{{

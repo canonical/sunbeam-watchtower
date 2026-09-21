@@ -124,8 +124,12 @@ func (g *GitHubForge) ListCommits(ctx context.Context, repo string, opts ListCom
 		return nil, err
 	}
 
+	revision := opts.Branch
+	if opts.Revision != "" {
+		revision = opts.Revision
+	}
 	ghOpts := &github.CommitsListOptions{
-		SHA:         opts.Branch,
+		SHA:         revision,
 		Author:      opts.Author,
 		ListOptions: github.ListOptions{PerPage: 100},
 	}

@@ -201,9 +201,10 @@ type ListMergeRequestsOpts struct {
 
 // ListCommitsOpts holds options for listing commits.
 type ListCommitsOpts struct {
-	Branch string
-	Since  *time.Time
-	Author string
+	Branch   string
+	Revision string // optional branch, tag, or commit to use as the history root
+	Since    *time.Time
+	Author   string
 }
 
 // Forge is the unified interface for interacting with code forges.

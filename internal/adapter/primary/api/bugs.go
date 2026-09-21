@@ -55,6 +55,7 @@ type BugsSearchOutput struct {
 type BugSyncInput struct {
 	Body struct {
 		Projects []string `json:"projects,omitempty" required:"false" doc:"Filter to these project names (empty = all)"`
+		BugIDs   []string `json:"bug_ids,omitempty" required:"false" doc:"Filter to these Launchpad bug IDs (empty = all)"`
 		DryRun   bool     `json:"dry_run,omitempty" required:"false" doc:"If true, show what would change without updating"`
 		Since    string   `json:"since,omitempty" required:"false" doc:"Only consider bugs created/modified since (RFC 3339 timestamp)"`
 	}
@@ -154,6 +155,7 @@ func RegisterBugsAPI(api huma.API, application *app.App) {
 	}, func(ctx context.Context, input *BugSyncInput) (*BugSyncOutput, error) {
 		result, err := facade.Bugs().Sync(ctx, frontend.BugSyncRequest{
 			Projects: input.Body.Projects,
+			BugIDs:   input.Body.BugIDs,
 			DryRun:   input.Body.DryRun,
 			Since:    input.Body.Since,
 		})
@@ -162,6 +164,8 @@ func RegisterBugsAPI(api huma.API, application *app.App) {
 			case errors.Is(err, frontend.ErrNoBugTrackerConfigured):
 				return nil, huma.Error500InternalServerError(err.Error())
 			case errors.Is(err, frontend.ErrInvalidBugSyncSince):
+				return nil, huma.Error400BadRequest(err.Error())
+			case errors.Is(err, frontend.ErrInvalidBugID):
 				return nil, huma.Error400BadRequest(err.Error())
 			default:
 				return nil, huma.Error500InternalServerError(fmt.Sprintf("sync failed: %v", err))

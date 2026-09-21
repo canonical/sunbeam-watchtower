@@ -39,6 +39,7 @@ type BugSearchResponse = dto.BugSearchResponse
 // BugSyncRequest describes one bug-sync workflow.
 type BugSyncRequest struct {
 	Projects []string
+	BugIDs   []string
 	DryRun   bool
 	Since    string
 }
@@ -123,9 +124,14 @@ func (w *BugClientWorkflow) Sync(ctx context.Context, req BugSyncRequest) (*BugS
 	if err != nil {
 		return nil, err
 	}
+	bugIDs, err := normalizeBugIDs(req.BugIDs)
+	if err != nil {
+		return nil, err
+	}
 
 	result, err := apiClient.BugsSync(ctx, client.BugsSyncOptions{
 		Projects: req.Projects,
+		BugIDs:   bugIDs,
 		DryRun:   req.DryRun,
 		Since:    resolvedSince,
 	})

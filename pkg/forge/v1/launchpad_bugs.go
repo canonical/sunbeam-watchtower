@@ -212,6 +212,7 @@ func lpBugTaskToBugTask(t *lp.BugTask) BugTask {
 		URL:        t.WebLink,
 		SelfLink:   t.SelfLink,
 		TargetName: t.BugTargetName,
+		TargetLink: t.TargetLink,
 	}
 	if t.DateCreated != nil {
 		bt.CreatedAt = t.DateCreated.Time

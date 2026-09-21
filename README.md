@@ -501,12 +501,31 @@ watchtower bug search 'relation-(changed|departed)' --mode regex -o json
 
 # Open a result using the canonical reference returned by search
 watchtower bug show launchpad:12345
+
+# Refresh Git/release evidence and preview required bug synchronization
+watchtower cache sync git
+watchtower cache sync releases
+watchtower bug sync --dry-run
+
+# Preview or apply only selected bugs. With explicit projects, the projects
+# declare affected scope and missing mapped Launchpad tasks are added.
+watchtower bug sync --dry-run 12345 23456
+watchtower bug sync 12345 --project openstack --project openstack-hypervisor
 ```
 
 Bug search is read-only and uses the existing cache; it never refreshes as a
 side effect. Results report cache provenance and explain matching fields,
 terms, fuzzy correspondences, and bounded excerpts. The Bugs TUI uses the same
 workflow: leave its query empty to list tasks, or enter a query to search.
+
+Bug sync derives `In Progress` and `Fix Committed` from per-project commit
+references. For snap projects, a series task becomes `Fix Released` only when
+the fix is reachable from the `rev<N>` Git tag corresponding to the snap
+revision currently published in that series' stable channel. This applies to
+all configured and future series rather than a fixed release list. Shared bug
+group tasks aggregate all affected components. Sync warns, but does not block,
+when an older series is released before a newer configured series. Release
+decisions are cache-first, so refresh both Git and release caches beforehand.
 
 ### `watchtower build`
 

@@ -81,6 +81,7 @@ func (c *Client) BugsSearch(ctx context.Context, req dto.BugSearchRequest) (*dto
 // BugsSyncOptions holds the request body for the bug sync endpoint.
 type BugsSyncOptions struct {
 	Projects []string `json:"projects,omitempty"`
+	BugIDs   []string `json:"bug_ids,omitempty"`
 	DryRun   bool     `json:"dry_run"`
 	Since    string   `json:"since,omitempty"` // RFC 3339 timestamp
 }

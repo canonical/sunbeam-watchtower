@@ -25,6 +25,11 @@ type BugSyncAction struct {
 	URL        string            `json:"url,omitempty" yaml:"url,omitempty"`
 	Series     string            `json:"series,omitempty" yaml:"series,omitempty"`
 	Project    string            `json:"project,omitempty" yaml:"project,omitempty"`
+	Reason     string            `json:"reason,omitempty" yaml:"reason,omitempty"`
+	Channel    string            `json:"channel,omitempty" yaml:"channel,omitempty"`
+	Revision   int               `json:"revision,omitempty" yaml:"revision,omitempty"`
+	Tag        string            `json:"tag,omitempty" yaml:"tag,omitempty"`
+	Commit     string            `json:"commit,omitempty" yaml:"commit,omitempty"`
 	ActionType BugSyncActionType `json:"action_type" yaml:"action_type"`
 }
 

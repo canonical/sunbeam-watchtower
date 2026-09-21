@@ -119,6 +119,7 @@ func TestBugClientWorkflowSync(t *testing.T) {
 	workflow := NewBugClientWorkflow(NewClientTransport(client.NewClient(ts.URL)))
 	got, err := workflow.Sync(context.Background(), BugSyncRequest{
 		Projects: []string{"keystone"},
+		BugIDs:   []string{"#12345", "12345", "23456"},
 		DryRun:   true,
 		Since:    "2025-01-01",
 	})
@@ -130,6 +131,10 @@ func TestBugClientWorkflowSync(t *testing.T) {
 	}
 	if gotBody["dry_run"] != true {
 		t.Fatalf("dry_run = %v, want true", gotBody["dry_run"])
+	}
+	bugIDs, ok := gotBody["bug_ids"].([]any)
+	if !ok || len(bugIDs) != 2 || bugIDs[0] != "12345" || bugIDs[1] != "23456" {
+		t.Fatalf("bug_ids = %#v, want normalized IDs", gotBody["bug_ids"])
 	}
 	if got.Result == nil || got.Result.Skipped != 2 || len(got.Result.Actions) != 1 {
 		t.Fatalf("Sync() result = %+v, want actions and skipped", got.Result)

@@ -174,6 +174,61 @@ func TestCache_EnsureRepo_CloneAndList(t *testing.T) {
 	}
 }
 
+func TestCache_FetchesRevisionTagAndListsTaggedHistory(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git binary required")
+	}
+	dir := t.TempDir()
+	workDir := filepath.Join(dir, "work")
+	originDir := filepath.Join(dir, "origin.git")
+	if err := os.MkdirAll(workDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	run := func(cwd string, args ...string) {
+		t.Helper()
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Dir = cwd
+		cmd.Env = append(os.Environ(),
+			"GIT_AUTHOR_NAME=Test Author", "GIT_AUTHOR_EMAIL=test@example.com",
+			"GIT_COMMITTER_NAME=Test Author", "GIT_COMMITTER_EMAIL=test@example.com",
+		)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("%v: %v\n%s", args, err, out)
+		}
+	}
+	run(workDir, "git", "init", "-b", "main")
+	run(workDir, "git", "config", "user.email", "test@example.com")
+	run(workDir, "git", "config", "user.name", "Test Author")
+	if err := os.WriteFile(filepath.Join(workDir, "fix"), []byte("fixed"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run(workDir, "git", "add", "fix")
+	run(workDir, "git", "commit", "-m", "fix\n\nCloses-Bug: #12345")
+	run(dir, "git", "clone", "--bare", workDir, originDir)
+
+	cache := NewCache(filepath.Join(dir, "cache"), nil)
+	cloneURL := "file://" + originDir
+	if _, err := cache.EnsureRepo(context.Background(), cloneURL, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	// Add an annotated revision tag without advancing the branch.
+	run(workDir, "git", "remote", "add", "origin", originDir)
+	run(workDir, "git", "tag", "-a", "rev1101", "-m", "snap revision 1101")
+	run(workDir, "git", "push", "origin", "refs/tags/rev1101")
+	if err := cache.Fetch(context.Background(), cloneURL, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	commits, err := cache.ListCommits(context.Background(), cloneURL, forge.ListCommitsOpts{Revision: "refs/tags/rev1101^{}"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(commits) != 1 || len(commits[0].BugRefs) != 1 || commits[0].BugRefs[0].ID != "12345" {
+		t.Fatalf("tagged commits = %+v", commits)
+	}
+}
+
 func TestCache_EnsureRepo_FetchExisting(t *testing.T) {
 	t.Parallel()
 	bareRepo := setupTestRepo(t)

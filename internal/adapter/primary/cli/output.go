@@ -791,6 +791,9 @@ func renderBugSyncTable(w io.Writer, styler *outputStyler, result *dto.BugSyncRe
 		case dto.BugSyncActionAddProjectTask:
 			fmt.Fprintf(w, "%s%s Bug #%s task on project %q\n", prefix, styler.Action("add:"), a.BugID, a.Project)
 		}
+		if a.Reason != "" {
+			fmt.Fprintf(w, "  %s %s\n", styler.Dim("reason:"), a.Reason)
+		}
 	}
 	return nil
 }

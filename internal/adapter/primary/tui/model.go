@@ -2597,8 +2597,9 @@ func (m rootModel) updateBugSyncForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	cmd := updateFormModal(msg, &m.bugSyncForm, func(values []string) tea.Cmd {
 		req := frontend.BugSyncRequest{
 			Projects: splitCSV(values[0]),
-			Since:    strings.TrimSpace(values[1]),
-			DryRun:   strings.TrimSpace(values[2]) != "false",
+			BugIDs:   splitCSV(values[1]),
+			Since:    strings.TrimSpace(values[2]),
+			DryRun:   strings.TrimSpace(values[3]) != "false",
 		}
 		m.overlay = overlaySync
 		return syncBugsCmd(m.session, req)
@@ -3099,6 +3100,7 @@ func newProjectSyncForm(session *runtimeadapter.Session) formModalModel {
 func newBugSyncForm(session *runtimeadapter.Session) formModalModel {
 	return newFormModal("Bug Sync", []fieldDef{
 		{placeholder: "projects", value: "", resetValue: "", suggestions: projectSuggestions(session), kind: fieldKindMultiSelect},
+		{placeholder: "bug IDs", value: "", resetValue: ""},
 		{placeholder: "since", value: "", resetValue: ""},
 		{placeholder: "dry run", value: "true", resetValue: "true", suggestions: []string{"true", "false"}, kind: fieldKindEnum},
 	})
