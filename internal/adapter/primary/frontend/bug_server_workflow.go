@@ -218,6 +218,7 @@ func (w *BugServerWorkflow) Sync(ctx context.Context, req BugSyncRequest) (*BugS
 	lpProjectMap := make(map[string][]string)
 	commonProjects := make(map[string]bool)
 	configuredSeries := make(map[string][]string)
+	developmentFocus := make(map[string]string)
 	cfg := w.application.GetConfig()
 	for _, group := range cfg.BugGroups {
 		commonProjects[group.CommonProject] = true
@@ -231,6 +232,13 @@ func (w *BugServerWorkflow) Sync(ctx context.Context, req BugSyncRequest) (*BugS
 			if bugConfig.Forge == "launchpad" {
 				lpProjectMap[proj.Name] = append(lpProjectMap[proj.Name], bugConfig.Project)
 				configuredSeries[bugConfig.Project] = append(configuredSeries[bugConfig.Project], series...)
+				focus := proj.DevelopmentFocus
+				if focus == "" {
+					focus = cfg.Launchpad.DevelopmentFocus
+				}
+				if focus != "" {
+					developmentFocus[bugConfig.Project] = focus
+				}
 			}
 		}
 	}
@@ -295,6 +303,7 @@ func (w *BugServerWorkflow) Sync(ctx context.Context, req BugSyncRequest) (*BugS
 
 	service := bugsync.NewService(sources, tracker, lpProjects, lpProjectMap, w.application.Logger).
 		WithProjectPolicy(commonProjects, configuredSeries).
+		WithDevelopmentFocus(developmentFocus).
 		WithReleaseEvidence(boundaries)
 	result, err := service.Sync(ctx, opts)
 	if err != nil {

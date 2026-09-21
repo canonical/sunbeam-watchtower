@@ -329,6 +329,42 @@ func TestSync_DoesNotTreatInheritedHistoryAsStableFix(t *testing.T) {
 	}
 }
 
+func TestSync_DevelopmentFocusUsesMainEvidence(t *testing.T) {
+	source := &mockCommitSource{
+		branches: []string{"main", "stable/2024.1"},
+		commits: map[string][]forge.Commit{
+			"main": {{SHA: "current-fix", BugRefs: []forge.BugRef{{ID: "12345", Type: forge.BugRefCloses}}}},
+		},
+	}
+	tracker := &mockBugTracker{bugs: map[string]*forge.Bug{"12345": {
+		ID: "12345", Tasks: []forge.BugTask{
+			{BugID: "12345", TargetName: "snap-openstack", Status: "New", SelfLink: "project"},
+			{BugID: "12345", TargetName: "snap-openstack/2026.1", Status: "New", SelfLink: "development"},
+		},
+	}}}
+	svc := NewService(map[string]port.CommitSource{"openstack": source}, tracker, nil,
+		map[string][]string{"openstack": {"snap-openstack"}}, nil).
+		WithProjectPolicy(nil, map[string][]string{"snap-openstack": {"2024.1", "2025.1", "2026.1"}}).
+		WithDevelopmentFocus(map[string]string{"snap-openstack": "2026.1"})
+
+	result, err := svc.Sync(context.Background(), SyncOptions{DryRun: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	updatedDevelopment := false
+	for _, action := range result.Actions {
+		if action.ActionType == ActionSeriesAssignment && action.Series == "2026.1" {
+			t.Fatalf("existing development-focus task was assigned again: %+v", action)
+		}
+		if action.ActionType == ActionStatusUpdate && action.Series == "2026.1" && action.NewStatus == "Fix Committed" {
+			updatedDevelopment = true
+		}
+	}
+	if !updatedDevelopment {
+		t.Fatalf("actions = %+v, want development-focus status update", result.Actions)
+	}
+}
+
 func (m *mockCommitSource) ListMRCommits(_ context.Context) ([]forge.Commit, error) {
 	return nil, nil
 }

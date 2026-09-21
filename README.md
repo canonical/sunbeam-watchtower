@@ -530,6 +530,8 @@ Historical series that are not configured are left untouched even when their
 Git branches or Launchpad tasks still exist.
 For configured stable series, only branch-unique fixes and backports count;
 history inherited from `main` or `master` at branch creation is excluded.
+The configured development-focus series follows current development-branch
+evidence.
 Git and release evidence is cache-first, while bug sync verifies current task
 statuses live before planning changes so a stale bug cache cannot produce a
 redundant status update. Verified statuses are written through to existing

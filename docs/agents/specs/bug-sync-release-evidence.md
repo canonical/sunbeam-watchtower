@@ -37,6 +37,11 @@ that happened to be fixed before the branch was created. If no development
 branch can be read, stable correlation is skipped with a warning rather than
 falling back to unsafe full-history scanning.
 
+The configured Launchpad development-focus series follows active development
+branch evidence as well as any branch-unique fixes for its matching stable
+branch. It is not treated as an unrelated stable-only task, and an existing
+development-focus task is not assigned a second time under a synthetic name.
+
 Stable release provenance is the Snap Store revision mapped to the Git tag
 `rev<revision>`. Annotated tags are peeled to their commit. Snap version text is
 diagnostic only and is not authoritative.

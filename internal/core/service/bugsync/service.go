@@ -75,6 +75,7 @@ type Service struct {
 	commonProjects   map[string]bool
 	releases         []ReleaseBoundary
 	configuredSeries map[string][]string
+	developmentFocus map[string]string
 	logger           *slog.Logger
 
 	// Caches to avoid redundant API calls.
@@ -93,6 +94,13 @@ func (s *Service) WithReleaseEvidence(boundaries []ReleaseBoundary) *Service {
 func (s *Service) WithProjectPolicy(common map[string]bool, series map[string][]string) *Service {
 	s.commonProjects = common
 	s.configuredSeries = series
+	return s
+}
+
+// WithDevelopmentFocus maps LP projects to the series represented by their
+// development task.
+func (s *Service) WithDevelopmentFocus(focus map[string]string) *Service {
+	s.developmentFocus = focus
 	return s
 }
 
@@ -582,6 +590,7 @@ func (s *Service) targetStatus(task forge.BugTask, branches []BugBranch, release
 		evidence *releaseEvidence
 	}
 	byProject := make(map[string][]BugBranch)
+	developmentSeries := series != "" && s.developmentFocus[target] == series
 	for _, branch := range branches {
 		mappedTargets := s.lpProjectMap[branch.Project]
 		if branch.Branch == "" || branch.RefType == forge.BugRefRelated || (len(mappedTargets) > 0 && !containsString(mappedTargets, target)) {
@@ -589,7 +598,11 @@ func (s *Service) targetStatus(task forge.BugTask, branches []BugBranch, release
 		}
 		if series != "" {
 			branchSeries := branchToSeriesName(branch.Branch)
-			if branchSeries != series {
+			if developmentSeries {
+				if branchSeries != "development" && branchSeries != series {
+					continue
+				}
+			} else if branchSeries != series {
 				continue
 			}
 		}
@@ -926,7 +939,7 @@ func (s *Service) assignToSeries(ctx context.Context, bugID string, bug *forge.B
 		return fmt.Errorf("invalid bug ID %q: %w", bugID, err)
 	}
 
-	type target struct{ project, series, source string }
+	type target struct{ project, series, lookupSeries, source string }
 	needed := make(map[string]target)
 	legacyProjects := make([]string, 0)
 	for _, task := range bug.Tasks {
@@ -951,8 +964,12 @@ func (s *Service) assignToSeries(ctx context.Context, bugID string, bug *forge.B
 			if seriesName != "development" && !s.supportsSeries(lpProject, seriesName) {
 				continue
 			}
-			key := lpProject + "/" + seriesName
-			needed[key] = target{project: lpProject, series: seriesName, source: bb.Project}
+			taskSeries := seriesName
+			if seriesName == "development" && s.developmentFocus[lpProject] != "" {
+				taskSeries = s.developmentFocus[lpProject]
+			}
+			key := lpProject + "/" + taskSeries
+			needed[key] = target{project: lpProject, series: taskSeries, lookupSeries: seriesName, source: bb.Project}
 		}
 	}
 	keys := make([]string, 0, len(needed))
@@ -966,7 +983,7 @@ func (s *Service) assignToSeries(ctx context.Context, bugID string, bug *forge.B
 			continue
 		}
 
-		seriesLink, err := s.resolveSeriesLink(ctx, item.project, item.series)
+		seriesLink, err := s.resolveSeriesLink(ctx, item.project, item.lookupSeries)
 		if err != nil {
 			s.logger.Warn("failed to resolve series", "project", item.project, "series", item.series, "error", err)
 			continue
