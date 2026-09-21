@@ -148,30 +148,60 @@ func (s *Service) Sync(ctx context.Context, opts SyncOptions) (*SyncResult, erro
 			continue
 		}
 
+		developmentBranch := selectDevelopmentBranch(branches)
+		if developmentBranch == "" {
+			result.Errors = append(result.Errors, fmt.Errorf("project %s: no main or master branch; stable-series correlation skipped", name))
+			continue
+		}
+		developmentCommits, err := ps.ListCommits(ctx, forge.ListCommitsOpts{Branch: developmentBranch})
+		if err != nil {
+			result.Errors = append(result.Errors, fmt.Errorf("project %s: reading development branch %s: %w", name, developmentBranch, err))
+			continue
+		}
+		developmentSHAs := make(map[string]bool, len(developmentCommits))
+		for _, commit := range developmentCommits {
+			developmentSHAs[commit.SHA] = true
+		}
+
+		stableCommits := make(map[string][]forge.Commit)
 		for _, branch := range branches {
-			if !isRelevantBranch(branch) {
+			if !strings.HasPrefix(branch, "stable/") {
 				continue
 			}
-
-			commits, err := ps.ListCommits(ctx, forge.ListCommitsOpts{Branch: branch})
-			if err != nil {
-				s.logger.Warn("failed to list commits", "project", name, "branch", branch, "error", err)
+			commits, branchErr := ps.ListCommits(ctx, forge.ListCommitsOpts{Branch: branch})
+			if branchErr != nil {
+				s.logger.Warn("failed to list commits", "project", name, "branch", branch, "error", branchErr)
 				continue
 			}
+			stableCommits[branch] = commits
+		}
 
-			for _, c := range commits {
-				for _, bugRef := range c.BugRefs {
-					if len(bugFilter) > 0 && !bugFilter[bugRef.ID] {
-						continue
-					}
-					bugBranches[bugRef.ID] = appendUnique(bugBranches[bugRef.ID], BugBranch{
-						BugID:   bugRef.ID,
-						Project: name,
-						Branch:  branch,
-						Commit:  c.SHA,
-						RefType: bugRef.Type,
-					})
+		// Ignore development history inherited by the oldest supported stable
+		// branch. Those bugs predate the support window and must not cause new
+		// project or series tasks to be created.
+		inheritedBeforeSupport := make(map[string]bool)
+		if baseline := s.oldestSupportedStableBranch(name, stableCommits); baseline != "" {
+			for _, commit := range stableCommits[baseline] {
+				if developmentSHAs[commit.SHA] {
+					inheritedBeforeSupport[commit.SHA] = true
 				}
+			}
+		}
+		for _, commit := range developmentCommits {
+			if !inheritedBeforeSupport[commit.SHA] {
+				appendCommitBugBranches(bugBranches, bugFilter, name, developmentBranch, commit)
+			}
+		}
+
+		for branch, commits := range stableCommits {
+			for _, commit := range commits {
+				// A stable branch contains the complete history inherited at branch
+				// creation. Only commits not reachable from the development branch
+				// are series-specific fixes/backports.
+				if developmentSHAs[commit.SHA] {
+					continue
+				}
+				appendCommitBugBranches(bugBranches, bugFilter, name, branch, commit)
 			}
 		}
 	}
@@ -346,6 +376,48 @@ func (s *Service) Sync(ctx context.Context, opts SyncOptions) (*SyncResult, erro
 	sort.SliceStable(result.Errors, func(i, j int) bool { return result.Errors[i].Error() < result.Errors[j].Error() })
 
 	return result, nil
+}
+
+func (s *Service) oldestSupportedStableBranch(project string, branches map[string][]forge.Commit) string {
+	oldest := ""
+	oldestOrder := 0
+	for branch := range branches {
+		series := strings.TrimPrefix(branch, "stable/")
+		order, ok := parseSeries(series)
+		if !ok || !s.sourceSupportsSeries(project, series) {
+			continue
+		}
+		if oldest == "" || order < oldestOrder {
+			oldest = branch
+			oldestOrder = order
+		}
+	}
+	return oldest
+}
+
+func selectDevelopmentBranch(branches []string) string {
+	for _, branch := range branches {
+		if branch == "main" {
+			return branch
+		}
+	}
+	for _, branch := range branches {
+		if branch == "master" {
+			return branch
+		}
+	}
+	return ""
+}
+
+func appendCommitBugBranches(bugBranches map[string][]BugBranch, bugFilter map[string]bool, project, branch string, commit forge.Commit) {
+	for _, bugRef := range commit.BugRefs {
+		if len(bugFilter) > 0 && !bugFilter[bugRef.ID] {
+			continue
+		}
+		bugBranches[bugRef.ID] = appendUnique(bugBranches[bugRef.ID], BugBranch{
+			BugID: bugRef.ID, Project: project, Branch: branch, Commit: commit.SHA, RefType: bugRef.Type,
+		})
+	}
 }
 
 func appendPlannedTasks(bug *forge.Bug, actions []SyncAction) {

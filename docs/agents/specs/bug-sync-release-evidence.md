@@ -29,6 +29,14 @@ mapped to it and is capped at the least-advanced component state.
 - `Closes-Bug` reachable from every snap revision currently published in the
   matching base `<track>/stable` channel means `Fix Released` for that series.
 
+A stable branch's inherited ancestry is not series evidence. Stable-series
+correlation considers only commits reachable from the stable branch that are
+not reachable from that project's `main` (or `master`) branch. This captures
+series-specific fixes and cherry-picked backports without assigning every bug
+that happened to be fixed before the branch was created. If no development
+branch can be read, stable correlation is skipped with a warning rather than
+falling back to unsafe full-history scanning.
+
 Stable release provenance is the Snap Store revision mapped to the Git tag
 `rev<revision>`. Annotated tags are peeled to their commit. Snap version text is
 diagnostic only and is not authoritative.

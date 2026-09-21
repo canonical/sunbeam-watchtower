@@ -42,7 +42,7 @@ func (m *mockCommitSource) ListCommits(_ context.Context, opts forge.ListCommits
 func TestSync_StableRevisionMarksOnlyMatchingSeriesReleased(t *testing.T) {
 	const tag = "refs/tags/rev1101^{}"
 	source := &mockCommitSource{
-		branches: []string{"stable/2024.1"},
+		branches: []string{"main", "stable/2024.1"},
 		commits: map[string][]forge.Commit{
 			"stable/2024.1": {{SHA: "newer", BugRefs: []forge.BugRef{{ID: "12345", Type: forge.BugRefCloses}}}},
 		},
@@ -83,10 +83,10 @@ func TestSync_StableRevisionMarksOnlyMatchingSeriesReleased(t *testing.T) {
 
 func TestSync_SharedTaskUsesLeastAdvancedComponent(t *testing.T) {
 	sources := map[string]port.CommitSource{
-		"openstack": &mockCommitSource{branches: []string{"stable/2024.1"}, commits: map[string][]forge.Commit{
+		"openstack": &mockCommitSource{branches: []string{"main", "stable/2024.1"}, commits: map[string][]forge.Commit{
 			"stable/2024.1": {{SHA: "snap-fix", BugRefs: []forge.BugRef{{ID: "12345", Type: forge.BugRefCloses}}}},
 		}},
-		"openstack-hypervisor": &mockCommitSource{branches: []string{"stable/2024.1"}, commits: map[string][]forge.Commit{
+		"openstack-hypervisor": &mockCommitSource{branches: []string{"main", "stable/2024.1"}, commits: map[string][]forge.Commit{
 			"stable/2024.1": {{SHA: "partial", BugRefs: []forge.BugRef{{ID: "12345", Type: forge.BugRefPartial}}}},
 		}},
 	}
@@ -157,7 +157,7 @@ func TestSync_ExplicitProjectsEnsureMappedTasks(t *testing.T) {
 func TestSync_WarnsWhenOlderSeriesReleasedFirst(t *testing.T) {
 	const tag = "refs/tags/rev1101^{}"
 	source := &mockCommitSource{
-		branches: []string{"stable/2024.1", "stable/2025.1"},
+		branches: []string{"main", "stable/2024.1", "stable/2025.1"},
 		commits: map[string][]forge.Commit{
 			"stable/2024.1": {{SHA: "old", BugRefs: []forge.BugRef{{ID: "12345", Type: forge.BugRefCloses}}}},
 			"stable/2025.1": {{SHA: "new", BugRefs: []forge.BugRef{{ID: "12345", Type: forge.BugRefCloses}}}},
@@ -191,7 +191,7 @@ func TestSync_WarnsWhenOlderSeriesReleasedFirst(t *testing.T) {
 
 func TestSync_DivergentPublishedTargetsStayFixCommitted(t *testing.T) {
 	source := &mockCommitSource{
-		branches: []string{"stable/2024.1"},
+		branches: []string{"main", "stable/2024.1"},
 		commits:  map[string][]forge.Commit{"stable/2024.1": {{SHA: "fix", BugRefs: []forge.BugRef{{ID: "12345", Type: forge.BugRefCloses}}}}},
 		revisions: map[string][]forge.Commit{
 			"refs/tags/rev10^{}": {{SHA: "with-fix", BugRefs: []forge.BugRef{{ID: "12345", Type: forge.BugRefCloses}}}},
@@ -233,7 +233,7 @@ func TestSync_DoesNotReviveUnsupportedSeries(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			source := &mockCommitSource{
-				branches: []string{"stable/2023.1"},
+				branches: []string{"main", "stable/2023.1"},
 				commits: map[string][]forge.Commit{
 					"stable/2023.1": {{SHA: "old-fix", BugRefs: []forge.BugRef{{ID: "12345", Type: forge.BugRefCloses}}}},
 				},
@@ -266,7 +266,7 @@ func TestSync_DoesNotReviveUnsupportedSeries(t *testing.T) {
 
 func TestSync_UsesFreshTaskStatusForPlanning(t *testing.T) {
 	source := &mockCommitSource{
-		branches: []string{"stable/2024.1"},
+		branches: []string{"main", "stable/2024.1"},
 		commits: map[string][]forge.Commit{
 			"stable/2024.1": {{SHA: "fix", BugRefs: []forge.BugRef{{ID: "12345", Type: forge.BugRefCloses}}}},
 		},
@@ -291,6 +291,40 @@ func TestSync_UsesFreshTaskStatusForPlanning(t *testing.T) {
 	for _, action := range result.Actions {
 		if action.ActionType == ActionStatusUpdate {
 			t.Fatalf("stale status produced action: %+v", action)
+		}
+	}
+}
+
+func TestSync_DoesNotTreatInheritedHistoryAsStableFix(t *testing.T) {
+	inherited := forge.Commit{SHA: "before-branch-cut", BugRefs: []forge.BugRef{{ID: "12345", Type: forge.BugRefCloses}}}
+	source := &mockCommitSource{
+		branches: []string{"main", "stable/2024.1", "stable/2025.1", "stable/2026.1"},
+		commits: map[string][]forge.Commit{
+			"main":          {inherited},
+			"stable/2024.1": {inherited},
+			"stable/2025.1": {inherited},
+			"stable/2026.1": {inherited},
+		},
+	}
+	tracker := &mockBugTracker{bugs: map[string]*forge.Bug{"12345": {
+		ID: "12345", Tasks: []forge.BugTask{
+			{BugID: "12345", TargetName: "snap-openstack", Status: "New", SelfLink: "project"},
+			{BugID: "12345", TargetName: "snap-openstack/2024.1", Status: "New", SelfLink: "2024"},
+			{BugID: "12345", TargetName: "snap-openstack/2025.1", Status: "New", SelfLink: "2025"},
+			{BugID: "12345", TargetName: "snap-openstack/2026.1", Status: "New", SelfLink: "2026"},
+		},
+	}}}
+	svc := NewService(map[string]port.CommitSource{"openstack": source}, tracker, nil,
+		map[string][]string{"openstack": {"snap-openstack"}}, nil).
+		WithProjectPolicy(nil, map[string][]string{"snap-openstack": {"2024.1", "2025.1", "2026.1"}})
+
+	result, err := svc.Sync(context.Background(), SyncOptions{DryRun: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, action := range result.Actions {
+		if action.Series == "2024.1" || action.Series == "2025.1" || action.Series == "2026.1" {
+			t.Fatalf("inherited commit produced stable-series action: %+v", action)
 		}
 	}
 }
