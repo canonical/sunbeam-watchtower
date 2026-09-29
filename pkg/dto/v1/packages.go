@@ -4,8 +4,19 @@
 package dto
 
 import (
+	"time"
+
 	distro "github.com/gboutry/sunbeam-watchtower/pkg/distro/v1"
 )
+
+// PackageSetCacheStatus describes one cached Launchpad packageset snapshot.
+type PackageSetCacheStatus struct {
+	Name             string    `json:"name" yaml:"name"`
+	ConfiguredSeries string    `json:"configured_series" yaml:"configured_series"`
+	Series           string    `json:"series" yaml:"series"`
+	PackageCount     int       `json:"package_count" yaml:"package_count"`
+	SyncedAt         time.Time `json:"synced_at" yaml:"synced_at"`
+}
 
 // PackageSource associates a name (e.g. "ubuntu", "uca") with its source entries.
 type PackageSource struct {

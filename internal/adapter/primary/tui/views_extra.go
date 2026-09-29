@@ -308,8 +308,11 @@ func loadPackagesCmd(session *runtimeadapter.Session, filters packagesFilters) t
 			setName := strings.TrimSpace(filters.set)
 			if setName == "" {
 				if session != nil && session.Config != nil {
-					if cfg := session.Config.LocalConfig(); cfg != nil && len(cfg.Packages.Sets) == 1 {
+					if cfg := session.Config.LocalConfig(); cfg != nil && len(cfg.Packages.Sets)+len(cfg.Packages.LaunchpadSets) == 1 {
 						for name := range cfg.Packages.Sets {
+							setName = name
+						}
+						for name := range cfg.Packages.LaunchpadSets {
 							setName = name
 						}
 					}
@@ -1673,6 +1676,9 @@ func packageFilterSuggestions(session *runtimeadapter.Session, model packagesMod
 	if session != nil && session.Config != nil {
 		if cfg := session.Config.LocalConfig(); cfg != nil {
 			for name := range cfg.Packages.Sets {
+				opts.sets = append(opts.sets, name)
+			}
+			for name := range cfg.Packages.LaunchpadSets {
 				opts.sets = append(opts.sets, name)
 			}
 			for distroName, distroCfg := range cfg.Packages.Distros {

@@ -12,6 +12,7 @@ import (
 const (
 	cacheTypeGit           = "git"
 	cacheTypePackagesIndex = "packages-index"
+	cacheTypePackageSets   = "packagesets"
 	cacheTypeUpstreamRepos = "upstream-repos"
 	cacheTypeBugs          = "bugs"
 	cacheTypeExcuses       = "excuses"
@@ -19,7 +20,7 @@ const (
 	cacheTypeReviews       = "reviews"
 )
 
-var allCacheTypes = []string{cacheTypeGit, cacheTypePackagesIndex, cacheTypeUpstreamRepos, cacheTypeBugs, cacheTypeExcuses, cacheTypeReleases, cacheTypeReviews}
+var allCacheTypes = []string{cacheTypeGit, cacheTypePackagesIndex, cacheTypePackageSets, cacheTypeUpstreamRepos, cacheTypeBugs, cacheTypeExcuses, cacheTypeReleases, cacheTypeReviews}
 
 func validateCacheTypes(args []string) error {
 	for _, arg := range args {
@@ -50,6 +51,7 @@ func newCacheSyncCmd(opts *Options) *cobra.Command {
 	var projects []string
 	var distros, releases, backports []string
 	var trackers []string
+	var sets []string
 	var since string
 
 	cmd := withActionSelector(&cobra.Command{
@@ -95,6 +97,18 @@ func newCacheSyncCmd(opts *Options) *cobra.Command {
 					return err
 				}
 				fmt.Fprintf(progressOut, "packages index sync %s.\n", styler.Action("done"))
+			}
+
+			if wantCacheType(args, cacheTypePackageSets) {
+				fmt.Fprintf(progressOut, "%s Launchpad packagesets...\n", styler.Action("syncing"))
+				results, err := workflow.SyncPackageSets(cmd.Context(), frontend.CacheSyncPackageSetsRequest{Sets: sets})
+				if err != nil {
+					return err
+				}
+				for _, result := range results {
+					fmt.Fprintf(progressOut, "%s: %d packages from %s\n", result.Name, result.PackageCount, result.Series)
+				}
+				fmt.Fprintf(progressOut, "packagesets sync %s (%d sets).\n", styler.Action("done"), len(results))
 			}
 
 			if wantCacheType(args, cacheTypeUpstreamRepos) {
@@ -165,6 +179,7 @@ func newCacheSyncCmd(opts *Options) *cobra.Command {
 	cmd.Flags().StringSliceVar(&distros, "distro", nil, "distros to update (packages-index only, default: all configured)")
 	cmd.Flags().StringSliceVar(&releases, "release", nil, "distro release names to sync (packages-index only, default: all configured)")
 	cmd.Flags().StringSliceVar(&backports, "backport", nil, "configured backport sources to sync (packages-index only, default: all)")
+	cmd.Flags().StringSliceVar(&sets, "set", nil, "Launchpad packagesets to sync (packagesets only, default: all configured)")
 	cmd.Flags().StringSliceVar(&trackers, "tracker", nil, "excuses trackers to sync (excuses only, default: all configured trackers)")
 	cmd.Flags().StringVar(&since, "since", "", "sync full review detail for closed reviews updated since this time (reviews only)")
 
@@ -207,6 +222,14 @@ func newCacheClearCmd(opts *Options) *cobra.Command {
 					return err
 				}
 				fmt.Fprintf(progressOut, "packages index cache %s.\n", styler.Action("cleared"))
+			}
+
+			if wantCacheType(args, cacheTypePackageSets) {
+				fmt.Fprintf(progressOut, "%s packagesets cache...\n", styler.Action("clearing"))
+				if err := workflow.Clear(cmd.Context(), frontend.CacheClearRequest{Type: cacheTypePackageSets}); err != nil {
+					return err
+				}
+				fmt.Fprintf(progressOut, "packagesets cache %s.\n", styler.Action("cleared"))
 			}
 
 			if wantCacheType(args, cacheTypeUpstreamRepos) {
@@ -278,6 +301,8 @@ func newCacheStatusCmd(opts *Options) *cobra.Command {
 			status.Packages.Directory = result.Packages.Directory
 			status.Packages.Sources = result.Packages.Sources
 			status.Packages.Error = result.Packages.Error
+			status.PackageSets.Entries = append(status.PackageSets.Entries, result.PackageSets.Entries...)
+			status.PackageSets.Error = result.PackageSets.Error
 			status.Upstream.Directory = result.Upstream.Directory
 			for _, r := range result.Upstream.Repos {
 				status.Upstream.Repos = append(status.Upstream.Repos, cacheEntry{Name: r.Name, Size: r.Size})

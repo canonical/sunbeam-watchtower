@@ -29,6 +29,10 @@ type CacheSyncPackagesIndexRequest struct {
 	Backports []string
 }
 
+type CacheSyncPackageSetsRequest struct {
+	Sets []string
+}
+
 // CacheSyncUpstreamResponse contains the outcome of one upstream-cache sync.
 type CacheSyncUpstreamResponse struct {
 	Status string
@@ -102,6 +106,10 @@ type CacheStatusResponse struct {
 		Sources   []dto.CacheStatus
 		Error     string
 	}
+	PackageSets struct {
+		Entries []dto.PackageSetCacheStatus
+		Error   string
+	}
 	Upstream struct {
 		Directory string
 		Repos     []CacheEntry
@@ -165,6 +173,15 @@ func (w *CacheClientWorkflow) SyncPackagesIndex(ctx context.Context, req CacheSy
 		Releases:  req.Releases,
 		Backports: req.Backports,
 	})
+}
+
+// SyncPackageSets refreshes the configured Launchpad packageset snapshots.
+func (w *CacheClientWorkflow) SyncPackageSets(ctx context.Context, req CacheSyncPackageSetsRequest) ([]dto.PackageSetCacheStatus, error) {
+	apiClient, err := w.resolveClient()
+	if err != nil {
+		return nil, err
+	}
+	return apiClient.PackageSetsCacheSync(ctx, req.Sets)
 }
 
 // SyncUpstream syncs upstream repository caches.
@@ -284,6 +301,8 @@ func (w *CacheClientWorkflow) Status(ctx context.Context) (*CacheStatusResponse,
 	response.Packages.Directory = result.Packages.Directory
 	response.Packages.Sources = append(response.Packages.Sources, result.Packages.Sources...)
 	response.Packages.Error = result.Packages.Error
+	response.PackageSets.Entries = append(response.PackageSets.Entries, result.PackageSets.Entries...)
+	response.PackageSets.Error = result.PackageSets.Error
 	response.Upstream.Directory = result.Upstream.Directory
 	for _, repo := range result.Upstream.Repos {
 		response.Upstream.Repos = append(response.Upstream.Repos, CacheEntry{Name: repo.Name, Size: repo.Size})

@@ -211,6 +211,12 @@ func DTOToConfig(d *dto.Config) *config.Config {
 			out.Packages.Sets[setName] = append([]string(nil), packages...)
 		}
 	}
+	if len(d.Packages.LaunchpadSets) > 0 {
+		out.Packages.LaunchpadSets = make(map[string]config.LaunchpadSetConfig, len(d.Packages.LaunchpadSets))
+		for name, set := range d.Packages.LaunchpadSets {
+			out.Packages.LaunchpadSets[name] = config.LaunchpadSetConfig{Series: set.Series}
+		}
+	}
 
 	if d.Packages.Upstream != nil {
 		out.Packages.Upstream = &config.UpstreamConfig{

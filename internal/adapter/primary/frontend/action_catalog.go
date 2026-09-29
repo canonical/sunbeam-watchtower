@@ -71,6 +71,7 @@ const (
 	ActionCacheSync             ActionID = "cache.sync"
 	ActionCacheSyncGit          ActionID = "cache.sync.git"
 	ActionCacheSyncPackages     ActionID = "cache.sync.packages"
+	ActionCacheSyncPackageSets  ActionID = "cache.sync.packagesets"
 	ActionCacheSyncUpstream     ActionID = "cache.sync.upstream"
 	ActionCacheSyncBugs         ActionID = "cache.sync.bugs"
 	ActionCacheSyncExcuses      ActionID = "cache.sync.excuses"
@@ -160,6 +161,7 @@ var actionCatalog = map[ActionID]ActionDescriptor{
 	ActionCacheSync:             descriptor(ActionCacheSync, "cache", "cache", MutabilityWrite, LocalEffectRead, RuntimeEmbeddedOK, ExportPolicyAllowed, "Synchronize multiple cache types."),
 	ActionCacheSyncGit:          descriptor(ActionCacheSyncGit, "cache", "cache", MutabilityWrite, LocalEffectRead, RuntimeEmbeddedOK, ExportPolicyAllowed, "Synchronize git caches."),
 	ActionCacheSyncPackages:     descriptor(ActionCacheSyncPackages, "cache", "cache", MutabilityWrite, LocalEffectRead, RuntimeEmbeddedOK, ExportPolicyAllowed, "Synchronize package index caches."),
+	ActionCacheSyncPackageSets:  descriptor(ActionCacheSyncPackageSets, "cache", "cache", MutabilityWrite, LocalEffectRead, RuntimeEmbeddedOK, ExportPolicyAllowed, "Synchronize Launchpad packageset caches."),
 	ActionCacheSyncUpstream:     descriptor(ActionCacheSyncUpstream, "cache", "cache", MutabilityWrite, LocalEffectRead, RuntimeEmbeddedOK, ExportPolicyAllowed, "Synchronize upstream caches."),
 	ActionCacheSyncBugs:         descriptor(ActionCacheSyncBugs, "cache", "cache", MutabilityWrite, LocalEffectRead, RuntimeEmbeddedOK, ExportPolicyAllowed, "Synchronize bug caches."),
 	ActionCacheSyncExcuses:      descriptor(ActionCacheSyncExcuses, "cache", "cache", MutabilityWrite, LocalEffectRead, RuntimeEmbeddedOK, ExportPolicyAllowed, "Synchronize excuses caches."),

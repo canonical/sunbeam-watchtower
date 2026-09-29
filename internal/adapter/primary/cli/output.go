@@ -1020,6 +1020,10 @@ type cacheFullStatus struct {
 		Error     string            `json:"error,omitempty" yaml:"error,omitempty"`
 		Sources   []dto.CacheStatus `json:"sources" yaml:"sources"`
 	} `json:"packages" yaml:"packages"`
+	PackageSets struct {
+		Entries []dto.PackageSetCacheStatus `json:"entries" yaml:"entries"`
+		Error   string                      `json:"error,omitempty" yaml:"error,omitempty"`
+	} `json:"packagesets" yaml:"packagesets"`
 	Upstream struct {
 		Directory string       `json:"directory" yaml:"directory"`
 		Repos     []cacheEntry `json:"repos" yaml:"repos"`
@@ -1086,6 +1090,25 @@ func renderCacheFullStatusTable(w io.Writer, styler *outputStyler, status *cache
 		}
 		if err := renderCacheStatusTable(w, styler, status.Packages.Sources); err != nil {
 			return err
+		}
+	}
+
+	fmt.Fprintln(w)
+	if err := writeSectionTitle(w, styler, "=== Launchpad Packagesets ==="); err != nil {
+		return err
+	}
+	if status.PackageSets.Error != "" {
+		fmt.Fprintf(w, "  %s\n", styler.Error("(unavailable: "+status.PackageSets.Error+")"))
+	} else if len(status.PackageSets.Entries) == 0 {
+		fmt.Fprintln(w, " ", styler.Placeholder("(none configured)"))
+	} else {
+		for _, entry := range status.PackageSets.Entries {
+			if entry.SyncedAt.IsZero() {
+				fmt.Fprintf(w, "  %s  %s\n", styler.Value("NAME", entry.Name), styler.Placeholder("(not synced)"))
+				continue
+			}
+			fmt.Fprintf(w, "  %s  %d packages from %s (synced %s)\n",
+				styler.Value("NAME", entry.Name), entry.PackageCount, entry.Series, entry.SyncedAt.Format("2006-01-02 15:04 UTC"))
 		}
 	}
 

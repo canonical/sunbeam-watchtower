@@ -76,6 +76,8 @@ func cacheSyncActionID(args []string) frontend.ActionID {
 		return frontend.ActionCacheSyncGit
 	case cacheTypePackagesIndex:
 		return frontend.ActionCacheSyncPackages
+	case cacheTypePackageSets:
+		return frontend.ActionCacheSyncPackageSets
 	case cacheTypeUpstreamRepos:
 		return frontend.ActionCacheSyncUpstream
 	case cacheTypeBugs:

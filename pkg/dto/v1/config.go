@@ -252,9 +252,14 @@ type UpstreamConfig struct {
 }
 
 type PackagesConfig struct {
-	Distros  map[string]DistroConfig `json:"distros,omitempty" yaml:"distros,omitempty"`
-	Sets     map[string][]string     `json:"sets,omitempty" yaml:"sets,omitempty"`
-	Upstream *UpstreamConfig         `json:"upstream,omitempty" yaml:"upstream,omitempty"`
+	Distros       map[string]DistroConfig       `json:"distros,omitempty" yaml:"distros,omitempty"`
+	Sets          map[string][]string           `json:"sets,omitempty" yaml:"sets,omitempty"`
+	LaunchpadSets map[string]LaunchpadSetConfig `json:"launchpad_sets,omitempty" yaml:"launchpad_sets,omitempty"`
+	Upstream      *UpstreamConfig               `json:"upstream,omitempty" yaml:"upstream,omitempty"`
+}
+
+type LaunchpadSetConfig struct {
+	Series string `json:"series" yaml:"series"`
 }
 
 type OTelSignalConfig struct {

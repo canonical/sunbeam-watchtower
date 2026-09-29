@@ -131,6 +131,10 @@ type CacheStatusOutput struct {
 			Sources   []dto.CacheStatus `json:"sources"`
 			Error     string            `json:"error,omitempty"`
 		} `json:"packages"`
+		PackageSets struct {
+			Entries []dto.PackageSetCacheStatus `json:"entries"`
+			Error   string                      `json:"error,omitempty"`
+		} `json:"packagesets"`
 		Upstream struct {
 			Directory string       `json:"directory"`
 			Repos     []CacheEntry `json:"repos"`
@@ -434,6 +438,11 @@ func RegisterCacheAPI(api huma.API, application *app.App) {
 				return nil, huma.Error500InternalServerError(fmt.Sprintf("clearing packages index: %v", err))
 			}
 
+		case "packagesets":
+			if err := application.ClearPackageSets(); err != nil {
+				return nil, huma.Error500InternalServerError(fmt.Sprintf("clearing packagesets: %v", err))
+			}
+
 		case "upstream-repos":
 			upDir, err := app.UpstreamCacheDir()
 			if err != nil {
@@ -588,6 +597,12 @@ func RegisterCacheAPI(api huma.API, application *app.App) {
 			} else {
 				out.Body.Packages.Sources = statuses
 			}
+		}
+		statuses, setErr := application.PackageSetStatuses()
+		if setErr != nil {
+			out.Body.PackageSets.Error = setErr.Error()
+		} else {
+			out.Body.PackageSets.Entries = statuses
 		}
 
 		// Upstream repos status.

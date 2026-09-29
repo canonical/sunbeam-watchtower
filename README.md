@@ -613,6 +613,9 @@ watchtower cache sync packages-index --distro ubuntu --release noble
 # Sync only configured package backport sources
 watchtower cache sync packages-index --distro ubuntu --backport gazpacho
 
+# Refresh Launchpad packageset membership
+watchtower cache sync packagesets --set openstack
+
 # Sync only configured upstream repos
 watchtower cache sync upstream-repos
 
@@ -647,11 +650,24 @@ watchtower cache clear git --project snap-openstack
 watchtower cache clear excuses --tracker debian
 ```
 
-Valid cache types are `git`, `packages-index`, `upstream-repos`, `bugs`, `excuses`, `releases`, and `reviews`.
+Valid cache types are `git`, `packages-index`, `packagesets`, `upstream-repos`, `bugs`, `excuses`, `releases`, and `reviews`.
 
 For `packages-index`, `--release` matches distro release names such as `noble`.
 Use `--backport` for configured package backport sources such as UCA or OSBPO
 targets.
+
+`packagesets` caches Launchpad packageset membership separately from archive
+package indexes. The configured `openstack` set uses Ubuntu's current
+development series, resolved when `cache sync packagesets` runs. Package diff
+and excuses commands read that snapshot without fetching the report; sync it
+once before using `--set openstack`, and run the sync again when membership or
+the development series changes. Use `cache status` to see the cached series,
+package count, and sync time. The report is stored under
+`$XDG_CACHE_HOME/sunbeam-watchtower/packagesets/`.
+
+Archive `Sources` files remain in the package index cache because package
+detail and `.dsc` lookup commands read their full metadata. Named package
+queries use the bbolt index directly, without scanning every cached package.
 
 Review cache data is stored at `$XDG_CACHE_HOME/sunbeam-watchtower/reviews/` (defaults to `~/.cache/sunbeam-watchtower/reviews/`). It stores cached review summaries for all synced items plus full comments/files/diff detail for open reviews and recently updated closed reviews.
 

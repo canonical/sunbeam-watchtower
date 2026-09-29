@@ -347,9 +347,16 @@ type UpstreamConfig struct {
 
 // PackagesConfig holds configuration for the packages subcommand.
 type PackagesConfig struct {
-	Distros  map[string]DistroConfig `mapstructure:"distros" yaml:"distros,omitempty"`
-	Sets     map[string][]string     `mapstructure:"sets" yaml:"sets,omitempty"`
-	Upstream *UpstreamConfig         `mapstructure:"upstream" yaml:"upstream,omitempty"`
+	Distros       map[string]DistroConfig       `mapstructure:"distros" yaml:"distros,omitempty"`
+	Sets          map[string][]string           `mapstructure:"sets" yaml:"sets,omitempty"`
+	LaunchpadSets map[string]LaunchpadSetConfig `mapstructure:"launchpad_sets" yaml:"launchpad_sets,omitempty"`
+	Upstream      *UpstreamConfig               `mapstructure:"upstream" yaml:"upstream,omitempty"`
+}
+
+// LaunchpadSetConfig selects the Ubuntu series for a cached Launchpad packageset.
+// "development" resolves the current development series during explicit sync.
+type LaunchpadSetConfig struct {
+	Series string `mapstructure:"series" yaml:"series"`
 }
 
 // OTelSignalConfig configures one OTLP-exported signal.

@@ -35,6 +35,18 @@ func TestDTOToConfigNil(t *testing.T) {
 	}
 }
 
+func TestLaunchpadPackageSetsSurviveConfigRoundTrip(t *testing.T) {
+	cfg := &config.Config{Packages: config.PackagesConfig{
+		LaunchpadSets: map[string]config.LaunchpadSetConfig{
+			"openstack": {Series: "development"},
+		},
+	}}
+	got := DTOToConfig(ConfigToDTO(cfg))
+	if got.Packages.LaunchpadSets["openstack"].Series != "development" {
+		t.Fatalf("LaunchpadSets = %+v, want openstack development", got.Packages.LaunchpadSets)
+	}
+}
+
 func TestDTOToConfigRoundTrip(t *testing.T) {
 	trueVal := true
 	original := &config.Config{

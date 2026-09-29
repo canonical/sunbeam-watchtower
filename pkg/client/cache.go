@@ -140,6 +140,10 @@ type CacheStatusResult struct {
 		Sources   []dto.CacheStatus `json:"sources"`
 		Error     string            `json:"error,omitempty"`
 	} `json:"packages"`
+	PackageSets struct {
+		Entries []dto.PackageSetCacheStatus `json:"entries"`
+		Error   string                      `json:"error,omitempty"`
+	} `json:"packagesets"`
 	Upstream struct {
 		Directory string       `json:"directory"`
 		Repos     []CacheEntry `json:"repos"`

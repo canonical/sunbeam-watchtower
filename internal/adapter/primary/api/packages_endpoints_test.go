@@ -41,6 +41,26 @@ func TestPackagesDiff_UnknownSetReturns404(t *testing.T) {
 	}
 }
 
+func TestPackagesDiff_UnsyncedLaunchpadSetReturns409(t *testing.T) {
+	srv, base := startTestServer(t)
+	defer srv.Shutdown(context.Background())
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	application := newEphemeralTestApp(t, &config.Config{Packages: config.PackagesConfig{
+		LaunchpadSets: map[string]config.LaunchpadSetConfig{
+			"openstack": {Series: "development"},
+		},
+	}})
+	RegisterPackagesAPI(srv.API(), application)
+	resp, err := http.Get(base + "/api/v1/packages/diff/openstack")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusConflict {
+		t.Fatalf("status = %d, want 409", resp.StatusCode)
+	}
+}
+
 func TestEffectivePackagesUpstreamReleaseUsesProviderDefault(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	application := app.NewApp(&config.Config{

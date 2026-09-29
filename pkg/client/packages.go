@@ -241,3 +241,12 @@ type PackagesCacheSyncOptions struct {
 func (c *Client) PackagesCacheSync(ctx context.Context, opts PackagesCacheSyncOptions) error {
 	return c.post(ctx, "/api/v1/packages/cache/sync", opts, nil)
 }
+
+// PackageSetsCacheSync refreshes configured Launchpad packageset snapshots.
+func (c *Client) PackageSetsCacheSync(ctx context.Context, sets []string) ([]dto.PackageSetCacheStatus, error) {
+	var result []dto.PackageSetCacheStatus
+	err := c.post(ctx, "/api/v1/packages/sets/cache/sync", struct {
+		Sets []string `json:"sets,omitempty"`
+	}{Sets: sets}, &result)
+	return result, err
+}

@@ -5,6 +5,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -132,6 +133,17 @@ type PackagesCacheSyncOutput struct {
 	}
 }
 
+// PackageSetsCacheSyncInput selects configured Launchpad sets to refresh.
+type PackageSetsCacheSyncInput struct {
+	Body struct {
+		Sets []string `json:"sets,omitempty" required:"false"`
+	}
+}
+
+type PackageSetsCacheSyncOutput struct {
+	Body []dto.PackageSetCacheStatus
+}
+
 // --- Route registration ------------------------------------------------------
 
 // RegisterPackagesAPI registers all package-related endpoints on the given huma API.
@@ -145,9 +157,9 @@ func RegisterPackagesAPI(api huma.API, application *app.App) {
 		Tags:        []string{"packages"},
 	}, func(ctx context.Context, input *PackagesDiffInput) (*PackagesDiffOutput, error) {
 		setName := input.Set
-		packages, ok := application.GetConfig().Packages.Sets[setName]
-		if !ok {
-			return nil, huma.Error404NotFound(fmt.Sprintf("unknown package set %q", setName))
+		packages, err := application.PackageSet(setName)
+		if err != nil {
+			return nil, packageSetHTTPError(err)
 		}
 
 		// When --only-in names a backport source, auto-scope distro and backport filters.
@@ -521,7 +533,42 @@ func RegisterPackagesAPI(api huma.API, application *app.App) {
 		return out, nil
 	})
 
+	huma.Register(api, huma.Operation{
+		OperationID: "package-sets-cache-sync",
+		Method:      http.MethodPost,
+		Path:        "/api/v1/packages/sets/cache/sync",
+		Summary:     "Sync configured Launchpad packagesets",
+		Tags:        []string{"packages"},
+	}, func(ctx context.Context, input *PackageSetsCacheSyncInput) (*PackageSetsCacheSyncOutput, error) {
+		snapshots, err := application.SyncPackageSets(ctx, input.Body.Sets)
+		if err != nil {
+			if errors.Is(err, app.ErrUnknownPackageSet) {
+				return nil, huma.Error400BadRequest(err.Error())
+			}
+			return nil, huma.Error500InternalServerError(err.Error())
+		}
+		out := &PackageSetsCacheSyncOutput{Body: make([]dto.PackageSetCacheStatus, 0, len(snapshots))}
+		for _, snapshot := range snapshots {
+			out.Body = append(out.Body, dto.PackageSetCacheStatus{
+				Name: snapshot.Name, ConfiguredSeries: snapshot.ConfiguredSeries,
+				Series: snapshot.Series, PackageCount: len(snapshot.Packages), SyncedAt: snapshot.SyncedAt,
+			})
+		}
+		return out, nil
+	})
+
 	registerPackagesExcusesAPI(api, application)
+}
+
+func packageSetHTTPError(err error) error {
+	switch {
+	case errors.Is(err, app.ErrUnknownPackageSet):
+		return huma.Error404NotFound(err.Error())
+	case errors.Is(err, app.ErrPackageSetNotSynced):
+		return huma.Error409Conflict(err.Error())
+	default:
+		return huma.Error500InternalServerError(err.Error())
+	}
 }
 
 // --- Helpers -----------------------------------------------------------------
