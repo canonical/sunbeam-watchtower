@@ -13,6 +13,8 @@ import (
 
 	"github.com/gboutry/sunbeam-watchtower/internal/app"
 	"github.com/gboutry/sunbeam-watchtower/internal/config"
+	distro "github.com/gboutry/sunbeam-watchtower/pkg/distro/v1"
+	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
 )
 
 func newEmptyPackagesApp(t *testing.T) *app.App {
@@ -81,6 +83,37 @@ func TestEffectivePackagesUpstreamReleaseUsesSelectedBackport(t *testing.T) {
 	}
 	if got := effectivePackagesUpstreamRelease(ctx, application, "", "", []string{"gazpacho", "flamingo"}); got != "" {
 		t.Fatalf("multiple backports upstream release = %q, want provider default", got)
+	}
+}
+
+func TestFilterBehindUpstreamTreatsEquivalentRCTagsAsCurrent(t *testing.T) {
+	sources := []dto.PackageSource{{Name: "ubuntu/gazpacho"}}
+	results := []dto.PackageDiffResult{
+		{
+			Package:  "ovn-bgp-agent",
+			Upstream: "7.0.0.0rc1",
+			Versions: map[string][]distro.SourcePackage{
+				"ubuntu/gazpacho": {
+					{Version: "6.0.0-0ubuntu1"},
+					{Version: "7.0.0~rc1-0ubuntu1~cloud0"},
+				},
+			},
+		},
+		{
+			Package:  "nova",
+			Upstream: "32.0.0",
+			Versions: map[string][]distro.SourcePackage{
+				"ubuntu/gazpacho": {{Version: "31.0.0-0ubuntu1"}},
+			},
+		},
+	}
+	got := filterBehindUpstreamResults(results, sources, true)
+	if len(got) != 1 || got[0].Package != "nova" {
+		t.Fatalf("merged filtered results = %+v, want only nova", got)
+	}
+	got = filterBehindUpstreamResults(results, sources, false)
+	if len(got) != 2 {
+		t.Fatalf("unmerged filtered results = %+v, want both packages", got)
 	}
 }
 

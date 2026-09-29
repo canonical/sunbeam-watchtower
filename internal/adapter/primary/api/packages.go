@@ -244,7 +244,7 @@ func RegisterPackagesAPI(api huma.API, application *app.App) {
 
 		// --behind-upstream: keep only packages where distro < upstream.
 		if input.BehindUpstream {
-			results = filterBehindUpstreamResults(results, sources)
+			results = filterBehindUpstreamResults(results, sources, input.Merge)
 		}
 
 		// --only-in: keep only packages present in the named source.
@@ -617,7 +617,7 @@ func hasPackagesUpstreamProvider(application *app.App) bool {
 }
 
 // filterBehindUpstreamResults keeps only results where distro version < upstream.
-func filterBehindUpstreamResults(results []dto.PackageDiffResult, sources []dto.PackageSource) []dto.PackageDiffResult {
+func filterBehindUpstreamResults(results []dto.PackageDiffResult, sources []dto.PackageSource, merge bool) []dto.PackageDiffResult {
 	var filtered []dto.PackageDiffResult
 	for _, r := range results {
 		if r.Upstream == "" {
@@ -626,8 +626,14 @@ func filterBehindUpstreamResults(results []dto.PackageDiffResult, sources []dto.
 		// Check if any source version is behind upstream.
 		behind := false
 		for _, src := range sources {
-			for _, sp := range r.Versions[src.Name] {
-				if sp.Version != "" && distro.CompareVersions(sp.Version, r.Upstream) < 0 {
+			versions := r.Versions[src.Name]
+			if merge {
+				if highest := distro.PickHighest(versions); highest != nil {
+					versions = []distro.SourcePackage{*highest}
+				}
+			}
+			for _, sp := range versions {
+				if sp.Version != "" && distro.CompareUpstreamVersions(sp.Version, r.Upstream) < 0 {
 					behind = true
 					break
 				}

@@ -44,6 +44,28 @@ func TestStripDebianRevision(t *testing.T) {
 	}
 }
 
+func TestCompareUpstreamVersions(t *testing.T) {
+	tests := []struct {
+		packaged, upstream string
+		want               int
+	}{
+		{"7.0.0~rc1-0ubuntu1~cloud0", "7.0.0.0rc1", 0},
+		{"7.0.0~rc1-0ubuntu1", "7.0.0.0rc2", -1},
+		{"7.0.0~rc2-0ubuntu1", "7.0.0.0rc1", 1},
+		{"7.0.0-0ubuntu1", "7.0.0.0rc1", 1},
+		{"7.0.0~rc1-0ubuntu1", "7.0.0", -1},
+		{"7.0.0-0ubuntu1", "7.0.0.0", 0},
+		{"7.0.1~rc1-0ubuntu1", "7.0.0.0rc1", 1},
+		{"3.6.0-1~cloud0", "3.6.0", 0},
+		{"2:7.0.0~rc1-0ubuntu1", "7.0.0.0rc1", 1},
+	}
+	for _, tt := range tests {
+		if got := CompareUpstreamVersions(tt.packaged, tt.upstream); got != tt.want {
+			t.Errorf("CompareUpstreamVersions(%q, %q) = %d, want %d", tt.packaged, tt.upstream, got, tt.want)
+		}
+	}
+}
+
 func TestPickHighest(t *testing.T) {
 	pkgs := []SourcePackage{
 		{Package: "nova", Version: "1:29.0.0-0ubuntu1", Suite: "noble", Component: "main"},

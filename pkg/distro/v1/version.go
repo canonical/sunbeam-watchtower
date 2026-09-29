@@ -4,10 +4,13 @@
 package v1
 
 import (
+	"regexp"
 	"strings"
 
 	"pault.ag/go/debian/version"
 )
+
+var upstreamReleaseVersion = regexp.MustCompile(`^([0-9]+(?:\.[0-9]+)*)(?:~?rc([0-9]+))?$`)
 
 // CompareVersions compares two Debian version strings using dpkg semantics.
 // Returns -1 if a < b, 0 if a == b, 1 if a > b.
@@ -32,6 +35,58 @@ func StripDebianRevision(v string) string {
 	}
 	parsed.Revision = ""
 	return parsed.String()
+}
+
+// CompareUpstreamVersions compares a packaged version with an upstream tag.
+// Numeric PEP 440 release segments ignore trailing zeros, and an OpenStack
+// rc suffix has the same meaning as Debian's ~rc spelling. Other version
+// forms retain Debian ordering.
+func CompareUpstreamVersions(packaged, upstream string) int {
+	packagedBase := StripDebianRevision(packaged)
+	if a, ok := normalizeUpstreamVersion(packagedBase); ok {
+		if b, ok := normalizeUpstreamVersion(upstream); ok {
+			return versionSign(CompareVersions(a, b))
+		}
+	}
+	return versionSign(CompareVersions(packaged, upstream))
+}
+
+func versionSign(comparison int) int {
+	switch {
+	case comparison < 0:
+		return -1
+	case comparison > 0:
+		return 1
+	default:
+		return 0
+	}
+}
+
+func normalizeUpstreamVersion(v string) (string, bool) {
+	match := upstreamReleaseVersion.FindStringSubmatch(v)
+	if match == nil {
+		return "", false
+	}
+	segments := strings.Split(match[1], ".")
+	for i, segment := range segments {
+		segments[i] = normalizeDigits(segment)
+	}
+	for len(segments) > 1 && segments[len(segments)-1] == "0" {
+		segments = segments[:len(segments)-1]
+	}
+	normalized := strings.Join(segments, ".")
+	if match[2] != "" {
+		normalized += "~rc" + normalizeDigits(match[2])
+	}
+	return normalized, true
+}
+
+func normalizeDigits(v string) string {
+	v = strings.TrimLeft(v, "0")
+	if v == "" {
+		return "0"
+	}
+	return v
 }
 
 // PickHighest returns the source package with the highest version from a slice.
