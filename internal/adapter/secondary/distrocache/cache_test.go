@@ -74,9 +74,20 @@ func TestQueryAll(t *testing.T) {
 func TestQueryByPackageName(t *testing.T) {
 	cache := setupTestCache(t)
 	ctx := context.Background()
+	err := cache.db.Update(func(tx *bbolt.Tx) error {
+		pkg := distro.SourcePackage{Package: "nova-extra", Version: "1.0", Suite: "noble", Component: "main"}
+		value, err := json.Marshal(pkg)
+		if err != nil {
+			return err
+		}
+		return tx.Bucket([]byte("ubuntu")).Put([]byte("nova-extra/noble/main"), value)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	pkgs, err := cache.Query(ctx, "ubuntu", dto.QueryOpts{
-		Packages: []string{"nova"},
+		Packages: []string{"nova", "nova"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -88,6 +99,20 @@ func TestQueryByPackageName(t *testing.T) {
 		if p.Package != "nova" {
 			t.Errorf("expected nova, got %q", p.Package)
 		}
+	}
+}
+
+func TestQueryDetailedByPackageName(t *testing.T) {
+	cache := setupTestCache(t)
+	pkgs, err := cache.QueryDetailed(context.Background(), "ubuntu", dto.QueryOpts{
+		Packages: []string{"nova"},
+		Suites:   []string{"noble-updates"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pkgs) != 1 || pkgs[0].Package != "nova" || pkgs[0].Suite != "noble-updates" {
+		t.Fatalf("detailed packages = %+v, want nova from noble-updates", pkgs)
 	}
 }
 

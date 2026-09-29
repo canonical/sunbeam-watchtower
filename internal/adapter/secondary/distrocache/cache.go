@@ -4,6 +4,7 @@
 package distrocache
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"time"
 
 	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
@@ -184,7 +186,7 @@ func (c *Cache) Query(_ context.Context, name string, opts dto.QueryOpts) ([]dis
 			return nil // no data for this source
 		}
 
-		return b.ForEach(func(k, v []byte) error {
+		return forEachPackage(b, opts.Packages, func(k, v []byte) error {
 			var pkg distro.SourcePackage
 			if err := json.Unmarshal(v, &pkg); err != nil {
 				return fmt.Errorf("unmarshalling value for key %q: %w", string(k), err)
@@ -231,7 +233,7 @@ func (c *Cache) QueryDetailed(_ context.Context, name string, opts dto.QueryOpts
 			return nil
 		}
 
-		return b.ForEach(func(k, v []byte) error {
+		return forEachPackage(b, opts.Packages, func(k, v []byte) error {
 			var pkg distro.SourcePackageDetail
 			if err := json.Unmarshal(v, &pkg); err != nil {
 				return fmt.Errorf("unmarshalling value for key %q: %w", string(k), err)
@@ -253,6 +255,33 @@ func (c *Cache) QueryDetailed(_ context.Context, name string, opts dto.QueryOpts
 	})
 
 	return results, err
+}
+
+// forEachPackage uses the package prefix in the bbolt key for named queries.
+// Unfiltered queries still walk the entire bucket for list and rdepends paths.
+func forEachPackage(b *bbolt.Bucket, packages []string, fn func(k, v []byte) error) error {
+	if len(packages) == 0 {
+		return b.ForEach(fn)
+	}
+	names := make([]string, 0, len(packages))
+	seen := make(map[string]bool, len(packages))
+	for _, name := range packages {
+		if !seen[name] {
+			seen[name] = true
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	cursor := b.Cursor()
+	for _, name := range names {
+		prefix := []byte(name + "/")
+		for k, v := cursor.Seek(prefix); bytes.HasPrefix(k, prefix); k, v = cursor.Next() {
+			if err := fn(k, v); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // Status returns cache metadata for all indexed source groups.
