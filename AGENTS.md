@@ -8,6 +8,9 @@ Every feature implementation must be followed by a sync to the PLAN.md file at r
 - Implementation plans go in `docs/agents/plans/`
 - No date/timestamp prefixes in filenames
 
+Commit subjects follow Conventional Commits (`type(scope): description` or
+`type: description` when no scope is useful).
+
 ## Git Commit Attribution
 
 When creating commits, use the `Assisted-by` trailer instead of `Co-Authored-By`. Format:
