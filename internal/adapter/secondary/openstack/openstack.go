@@ -123,6 +123,16 @@ func (p *Provider) listLatestDeliverables(ctx context.Context) ([]dto.Deliverabl
 
 	seen := map[string]bool{}
 	var result []dto.Deliverable
+	// Independent deliverables no longer appear in named series. Prefer their
+	// current release records over historical series entries.
+	independent, _ := p.listDeliverablesForRelease(ctx, "_independent")
+	for _, d := range independent {
+		if d.Version == "" {
+			continue
+		}
+		seen[p.MapPackageName(d.Name, d.Type)] = true
+		result = append(result, d)
+	}
 	for _, s := range series {
 		if strings.EqualFold(s.Status, "development") || s.Name == "" {
 			continue
@@ -194,7 +204,7 @@ func parseDeliverable(fileName string, data []byte) (dto.Deliverable, error) {
 }
 
 // latestVersion returns the latest non-lifecycle version from the releases
-// list, iterating backwards. A "lifecycle" version ends in -eol or -eom.
+// list, iterating backwards. Lifecycle markers are not package versions.
 func latestVersion(releases []deliverableRelease) string {
 	for i := len(releases) - 1; i >= 0; i-- {
 		v := releases[i].Version
@@ -206,10 +216,10 @@ func latestVersion(releases []deliverableRelease) string {
 	return ""
 }
 
-// isLifecycleVersion returns true if the version string represents an
-// end-of-life or end-of-maintenance marker.
+// isLifecycleVersion returns true for end-of-life, end-of-maintenance, and
+// extended-maintenance markers.
 func isLifecycleVersion(v string) bool {
-	return strings.HasSuffix(v, "-eol") || strings.HasSuffix(v, "-eom")
+	return strings.HasSuffix(v, "-eol") || strings.HasSuffix(v, "-eom") || strings.HasSuffix(v, "-em")
 }
 
 // mapDeliverableType converts the string type from the releases YAML to a
@@ -228,21 +238,26 @@ func mapDeliverableType(t string) dto.DeliverableType {
 }
 
 // GetConstraints returns upper version constraints for the given release from
-// the requirements repo. It tries the stable/<release> branch first, then
-// falls back to HEAD.
+// the requirements repo. Named series are mapped to their release IDs, which
+// are used by the requirements stable branches.
 func (p *Provider) GetConstraints(ctx context.Context, release string) (map[string]string, error) {
-	content := ""
-	var err error
+	ref := "HEAD:upper-constraints.txt"
 	if release != "" {
-		ref := fmt.Sprintf("origin/stable/%s:upper-constraints.txt", release)
-		content, err = gitShow(ctx, p.requirementsDir, ref)
-	}
-	if release == "" || err != nil {
-		// Fallback to HEAD (e.g. for master/main).
-		content, err = gitShow(ctx, p.requirementsDir, "HEAD:upper-constraints.txt")
+		series, err := p.seriesStatus(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("reading upper-constraints.txt: %w", err)
+			return nil, err
 		}
+		for _, s := range series {
+			if s.Name == release || s.ReleaseID == release {
+				release = s.ReleaseID
+				break
+			}
+		}
+		ref = fmt.Sprintf("stable/%s:upper-constraints.txt", release)
+	}
+	content, err := gitShow(ctx, p.requirementsDir, ref)
+	if err != nil {
+		return nil, fmt.Errorf("reading %s: %w", ref, err)
 	}
 	return parseConstraints([]byte(content))
 }

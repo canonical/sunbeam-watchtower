@@ -135,7 +135,7 @@ func (w *PackagesClientWorkflow) Diff(ctx context.Context, req PackagesDiffReque
 		return nil, err
 	}
 
-	effectiveUpstreamRelease := w.effectiveUpstreamRelease(ctx, req.UpstreamRelease, req.Constraints)
+	effectiveUpstreamRelease := w.effectiveUpstreamRelease(ctx, req.UpstreamRelease, req.Constraints, req.Backports)
 	results, err := apiClient.PackagesDiff(ctx, client.PackagesDiffOptions{
 		Set:             req.Set,
 		Distros:         req.Distros,
@@ -167,7 +167,7 @@ func (w *PackagesClientWorkflow) ShowVersion(ctx context.Context, req PackagesSh
 		return nil, err
 	}
 
-	effectiveUpstreamRelease := w.effectiveUpstreamRelease(ctx, req.UpstreamRelease, "")
+	effectiveUpstreamRelease := w.effectiveUpstreamRelease(ctx, req.UpstreamRelease, "", req.Backports)
 	result, err := apiClient.PackagesShow(ctx, req.Package, client.PackagesShowOptions{
 		Distros:         req.Distros,
 		Releases:        req.Releases,
@@ -187,13 +187,16 @@ func (w *PackagesClientWorkflow) ShowVersion(ctx context.Context, req PackagesSh
 	}, nil
 }
 
-func (w *PackagesClientWorkflow) effectiveUpstreamRelease(ctx context.Context, requested, constraints string) string {
+func (w *PackagesClientWorkflow) effectiveUpstreamRelease(ctx context.Context, requested, constraints string, backports []string) string {
 	if w == nil || w.application == nil || w.application.GetConfig() == nil {
 		return ""
 	}
 	cfg := w.application.GetConfig()
 	if cfg.Packages.Upstream == nil {
 		return ""
+	}
+	if requested == "" && constraints == "" && len(backports) == 1 && backports[0] != "none" {
+		requested = backports[0]
 	}
 
 	provider, err := w.application.BuildUpstreamProvider()

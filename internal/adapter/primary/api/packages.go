@@ -237,7 +237,7 @@ func RegisterPackagesAPI(api huma.API, application *app.App) {
 		}
 
 		// Annotate upstream versions when requested.
-		effectiveRelease := effectivePackagesUpstreamRelease(ctx, application, input.UpstreamRelease, input.Constraints)
+		effectiveRelease := effectivePackagesUpstreamRelease(ctx, application, input.UpstreamRelease, input.Constraints, backports)
 		if effectiveRelease != "" || hasPackagesUpstreamProvider(application) {
 			_ = annotateUpstreamResults(ctx, application, results, effectiveRelease)
 		}
@@ -287,7 +287,7 @@ func RegisterPackagesAPI(api huma.API, application *app.App) {
 			return nil, huma.Error500InternalServerError(fmt.Sprintf("show failed: %v", err))
 		}
 
-		effectiveRelease := effectivePackagesUpstreamRelease(ctx, application, input.UpstreamRelease, "")
+		effectiveRelease := effectivePackagesUpstreamRelease(ctx, application, input.UpstreamRelease, "", backports)
 		if effectiveRelease != "" || hasPackagesUpstreamProvider(application) {
 			results := []dto.PackageDiffResult{*result}
 			_ = annotateUpstreamResults(ctx, application, results, effectiveRelease)
@@ -575,13 +575,16 @@ func annotateUpstreamResults(ctx context.Context, application *app.App, results 
 	return nil
 }
 
-func effectivePackagesUpstreamRelease(ctx context.Context, application *app.App, requested, constraints string) string {
+func effectivePackagesUpstreamRelease(ctx context.Context, application *app.App, requested, constraints string, backports []string) string {
 	if application == nil || application.GetConfig() == nil {
 		return ""
 	}
 	cfg := application.GetConfig()
 	if cfg.Packages.Upstream == nil {
 		return ""
+	}
+	if requested == "" && constraints == "" && len(backports) == 1 && backports[0] != "none" {
+		requested = backports[0]
 	}
 
 	provider, err := application.BuildUpstreamProvider()

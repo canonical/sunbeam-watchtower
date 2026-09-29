@@ -125,6 +125,9 @@ func TestListDeliverablesDefaultUsesLatestAvailablePerPackage(t *testing.T) {
 - name: flamingo
   release-id: 2025.2
   status: maintained
+- name: stein
+  release-id: 2019.1
+  status: end of life
 `)
 	writeTestFile(t, repo, "deliverables/gazpacho/nova.yaml", `---
 team: nova
@@ -144,6 +147,20 @@ type: service
 releases:
   - version: 15.0.1
 `)
+	writeTestFile(t, repo, "deliverables/stein/os-traits.yaml", `---
+team: nova
+type: library
+releases:
+  - version: 0.11.0
+  - version: stein-em
+`)
+	writeTestFile(t, repo, "deliverables/_independent/os-traits.yaml", `---
+team: nova
+type: library
+releases:
+  - version: 3.6.0
+  - version: 3.9.0
+`)
 	commitTestRepo(t, repo)
 
 	provider := NewProvider(repo, "")
@@ -162,8 +179,55 @@ releases:
 	if versions["vitrage"] != "15.0.1" {
 		t.Fatalf("vitrage version = %q, want latest available flamingo version 15.0.1", versions["vitrage"])
 	}
-	if len(versions) != 2 {
-		t.Fatalf("versions = %+v, want only nova and vitrage", versions)
+	if versions["os-traits"] != "3.9.0" {
+		t.Fatalf("os-traits version = %q, want latest independent version 3.9.0", versions["os-traits"])
+	}
+	if len(versions) != 3 {
+		t.Fatalf("versions = %+v, want nova, vitrage and os-traits", versions)
+	}
+}
+
+func TestGetConstraintsUsesSeriesReleaseID(t *testing.T) {
+	releases := initTestGitRepo(t)
+	writeTestFile(t, releases, "data/series_status.yaml", `---
+- name: gazpacho
+  release-id: 2026.1
+  status: maintained
+- name: flamingo
+  release-id: 2025.2
+  status: maintained
+`)
+	commitTestRepo(t, releases)
+
+	requirements := initTestGitRepo(t)
+	writeTestFile(t, requirements, "upper-constraints.txt", "os-traits===3.9.0\n")
+	commitTestRepo(t, requirements)
+	runTestGit(t, requirements, "branch", "test-base")
+	runTestGit(t, requirements, "checkout", "-b", "stable/2026.1")
+	writeTestFile(t, requirements, "upper-constraints.txt", "os-traits===3.6.0\n")
+	commitTestRepo(t, requirements)
+	runTestGit(t, requirements, "checkout", "test-base")
+	runTestGit(t, requirements, "checkout", "-b", "stable/2025.2")
+	writeTestFile(t, requirements, "upper-constraints.txt", "os-traits===3.5.0\n")
+	commitTestRepo(t, requirements)
+	runTestGit(t, requirements, "checkout", "test-base")
+
+	provider := NewProvider(releases, requirements)
+	for _, tt := range []struct{ release, version string }{
+		{"gazpacho", "3.6.0"}, {"2026.1", "3.6.0"},
+		{"flamingo", "3.5.0"}, {"2025.2", "3.5.0"},
+	} {
+		got, err := provider.GetConstraints(context.Background(), tt.release)
+		if err != nil {
+			t.Fatalf("GetConstraints(%q): %v", tt.release, err)
+		}
+		if got["os-traits"] != tt.version {
+			t.Fatalf("GetConstraints(%q) = %q, want %s", tt.release, got["os-traits"], tt.version)
+		}
+	}
+	got, err := provider.GetConstraints(context.Background(), "")
+	if err != nil || got["os-traits"] != "3.9.0" {
+		t.Fatalf("GetConstraints(default) = %v, %v, want 3.9.0", got, err)
 	}
 }
 
@@ -372,6 +436,7 @@ func TestIsLifecycleVersion(t *testing.T) {
 		{"1.0.0", false},
 		{"1.0.0-eol", true},
 		{"1.0.0-eom", true},
+		{"stein-em", true},
 		{"1.0.0-rc1", false},
 		{"eol", false},
 	}

@@ -75,9 +75,28 @@ func TestPackagesClientWorkflowEffectiveUpstreamReleaseDefaultsFromConfig(t *tes
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	workflow := NewPackagesClientWorkflow(nil, testPackagesAppWithUpstream())
 
-	got := workflow.effectiveUpstreamRelease(context.Background(), "", "")
+	got := workflow.effectiveUpstreamRelease(context.Background(), "", "", nil)
 	if got != "" {
 		t.Fatalf("effectiveUpstreamRelease() = %q, want provider default", got)
+	}
+}
+
+func TestPackagesClientWorkflowDiffUsesSelectedBackportForUpstream(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Query().Get("upstream_release"); got != "gazpacho" {
+			t.Errorf("upstream_release = %q, want gazpacho", got)
+		}
+		_ = json.NewEncoder(w).Encode([]dto.PackageDiffResult{})
+	}))
+	defer ts.Close()
+
+	workflow := NewPackagesClientWorkflow(NewClientTransport(client.NewClient(ts.URL)), testPackagesAppWithUpstream())
+	_, err := workflow.Diff(context.Background(), PackagesDiffRequest{
+		Set: "openstack", Backports: []string{"gazpacho"},
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -125,7 +144,7 @@ func TestPackagesClientWorkflowShowVersion(t *testing.T) {
 func TestPackagesClientWorkflowEffectiveUpstreamReleaseNeedsUpstreamProvider(t *testing.T) {
 	workflow := NewPackagesClientWorkflow(nil, testPackagesApp())
 
-	got := workflow.effectiveUpstreamRelease(context.Background(), "", "")
+	got := workflow.effectiveUpstreamRelease(context.Background(), "", "", nil)
 	if got != "" {
 		t.Fatalf("effectiveUpstreamRelease() = %q, want empty", got)
 	}

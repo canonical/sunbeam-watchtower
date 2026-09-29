@@ -48,7 +48,7 @@ func TestEffectivePackagesUpstreamReleaseUsesProviderDefault(t *testing.T) {
 		},
 	}, nil)
 
-	got := effectivePackagesUpstreamRelease(context.Background(), application, "", "")
+	got := effectivePackagesUpstreamRelease(context.Background(), application, "", "", nil)
 	if got != "" {
 		t.Fatalf("effectivePackagesUpstreamRelease() = %q, want provider default", got)
 	}
@@ -59,9 +59,28 @@ func TestEffectivePackagesUpstreamReleaseNeedsUpstreamProvider(t *testing.T) {
 		Launchpad: config.LaunchpadConfig{DevelopmentFocus: "2025.1"},
 	}, nil)
 
-	got := effectivePackagesUpstreamRelease(context.Background(), application, "", "")
+	got := effectivePackagesUpstreamRelease(context.Background(), application, "", "", nil)
 	if got != "" {
 		t.Fatalf("effectivePackagesUpstreamRelease() = %q, want empty", got)
+	}
+}
+
+func TestEffectivePackagesUpstreamReleaseUsesSelectedBackport(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	application := app.NewApp(&config.Config{
+		Packages: config.PackagesConfig{
+			Upstream: &config.UpstreamConfig{Provider: "openstack"},
+		},
+	}, nil)
+	ctx := context.Background()
+	if got := effectivePackagesUpstreamRelease(ctx, application, "", "", []string{"gazpacho"}); got != "gazpacho" {
+		t.Fatalf("selected backport upstream release = %q, want gazpacho", got)
+	}
+	if got := effectivePackagesUpstreamRelease(ctx, application, "2025.1", "", []string{"gazpacho"}); got != "2025.1" {
+		t.Fatalf("explicit upstream release = %q, want 2025.1", got)
+	}
+	if got := effectivePackagesUpstreamRelease(ctx, application, "", "", []string{"gazpacho", "flamingo"}); got != "" {
+		t.Fatalf("multiple backports upstream release = %q, want provider default", got)
 	}
 }
 
