@@ -17,6 +17,7 @@ type ClientFacade struct {
 	packages   *PackagesClientWorkflow
 	cache      *CacheClientWorkflow
 	bugs       *BugClientWorkflow
+	sru        *SRUClientWorkflow
 	reviews    *ReviewClientWorkflow
 	commits    *CommitClientWorkflow
 	config     *ConfigClientWorkflow
@@ -47,6 +48,7 @@ func NewClientFacade(apiClient *ClientTransport, application *app.App) *ClientFa
 		packages:                 NewPackagesClientWorkflow(apiClient, application),
 		cache:                    NewCacheClientWorkflow(apiClient),
 		bugs:                     NewBugClientWorkflow(apiClient),
+		sru:                      NewSRUClientWorkflow(apiClient),
 		reviews:                  NewReviewClientWorkflow(apiClient),
 		commits:                  NewCommitClientWorkflow(apiClient),
 		config:                   NewConfigClientWorkflow(apiClient),
@@ -78,6 +80,9 @@ func (f *ClientFacade) Cache() *CacheClientWorkflow { return f.cache }
 
 // Bugs returns reusable bug workflows.
 func (f *ClientFacade) Bugs() *BugClientWorkflow { return f.bugs }
+
+// SRU returns the SRU monitoring workflow.
+func (f *ClientFacade) SRU() *SRUClientWorkflow { return f.sru }
 
 // Reviews returns reusable review workflows.
 func (f *ClientFacade) Reviews() *ReviewClientWorkflow { return f.reviews }

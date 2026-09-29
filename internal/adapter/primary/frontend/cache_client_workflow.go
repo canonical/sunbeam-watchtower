@@ -134,6 +134,19 @@ type CacheStatusResponse struct {
 		Entries   []dto.ReviewCacheStatus
 		Error     string
 	}
+	SRU struct {
+		Status dto.SRUCacheStatus
+		Error  string
+	}
+}
+
+// SyncSRU refreshes the local SRU monitoring snapshot.
+func (w *CacheClientWorkflow) SyncSRU(ctx context.Context) (*dto.SRUSnapshot, error) {
+	apiClient, err := w.resolveClient()
+	if err != nil {
+		return nil, err
+	}
+	return apiClient.SRURefresh(ctx)
 }
 
 // CacheClientWorkflow exposes reusable client-side cache workflows for CLI/TUI/MCP frontends.
@@ -319,6 +332,8 @@ func (w *CacheClientWorkflow) Status(ctx context.Context) (*CacheStatusResponse,
 	response.Reviews.Directory = result.Reviews.Directory
 	response.Reviews.Entries = append(response.Reviews.Entries, result.Reviews.Entries...)
 	response.Reviews.Error = result.Reviews.Error
+	response.SRU.Status = result.SRU.Status
+	response.SRU.Error = result.SRU.Error
 	return response, nil
 }
 

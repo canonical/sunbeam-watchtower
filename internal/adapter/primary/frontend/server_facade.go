@@ -13,6 +13,7 @@ type ServerFacade struct {
 	releases   *ReleaseServerWorkflow
 	projects   *ProjectServerWorkflow
 	bugs       *BugServerWorkflow
+	sru        *SRUServerWorkflow
 	reviews    *ReviewServerWorkflow
 	commits    *CommitServerWorkflow
 	config     *ConfigServerWorkflow
@@ -30,6 +31,7 @@ func NewServerFacade(application *app.App) *ServerFacade {
 		releases:   NewReleaseServerWorkflow(application),
 		projects:   NewProjectServerWorkflow(application, async),
 		bugs:       NewBugServerWorkflow(application),
+		sru:        NewSRUServerWorkflow(application),
 		reviews:    NewReviewServerWorkflow(application),
 		commits:    NewCommitServerWorkflow(application),
 		config:     NewConfigServerWorkflow(application),
@@ -54,6 +56,9 @@ func (f *ServerFacade) Projects() *ProjectServerWorkflow { return f.projects }
 
 // Bugs returns reusable bug workflows.
 func (f *ServerFacade) Bugs() *BugServerWorkflow { return f.bugs }
+
+// SRU returns the SRU monitoring workflow.
+func (f *ServerFacade) SRU() *SRUServerWorkflow { return f.sru }
 
 // Reviews returns reusable review workflows.
 func (f *ServerFacade) Reviews() *ReviewServerWorkflow { return f.reviews }

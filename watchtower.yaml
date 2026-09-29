@@ -239,6 +239,7 @@ packages:
           backports:
             yoga:
               parent_release: jammy
+              sru_parent_required: true
               sources:
                 - mirror: https://ppa.launchpadcontent.net/ubuntu-cloud-archive/yoga-staging/ubuntu
                   suites: [release]
@@ -251,6 +252,7 @@ packages:
           backports:
             caracal:
               parent_release: noble
+              sru_parent_required: true
               sources:
                 - mirror: https://ppa.launchpadcontent.net/ubuntu-cloud-archive/caracal-staging/ubuntu
                   suites: [release]
@@ -263,6 +265,7 @@ packages:
           backports:
             epoxy:
               parent_release: plucky
+              sru_parent_required: false
               sources:
                 - mirror: https://ppa.launchpadcontent.net/ubuntu-cloud-archive/epoxy-staging/ubuntu
                   suites: [release]
@@ -272,6 +275,7 @@ packages:
                   components: [main]
             flamingo:
               parent_release: questing
+              sru_parent_required: true
               sources:
                 - mirror: https://ppa.launchpadcontent.net/ubuntu-cloud-archive/flamingo-staging/ubuntu
                   suites: [release]
@@ -281,6 +285,7 @@ packages:
                   components: [main]
             gazpacho:
               parent_release: resolute
+              sru_parent_required: true
               sources:
                 - mirror: https://ppa.launchpadcontent.net/ubuntu-cloud-archive/gazpacho-staging/ubuntu
                   suites: [release]

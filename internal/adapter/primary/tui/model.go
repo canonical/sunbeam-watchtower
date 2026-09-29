@@ -56,6 +56,7 @@ const (
 	viewReviews
 	viewCommits
 	viewProjects
+	viewSRU
 )
 
 type overlayKind int
@@ -75,6 +76,7 @@ const (
 	overlayBuildTrigger
 	overlayPackageFilters
 	overlayBugFilters
+	overlaySRUFilters
 	overlayReviewFilters
 	overlayCommitFilters
 	overlayProjectFilters
@@ -257,6 +259,7 @@ const (
 	cacheActionExcuses
 	cacheActionReleases
 	cacheActionReviews
+	cacheActionSRU
 )
 
 type releaseFilterOptions struct {
@@ -355,6 +358,11 @@ type bugSyncFinishedMsg struct {
 	err    error
 }
 
+type sruLoadedMsg struct {
+	snapshot *dto.SRUSnapshot
+	err      error
+}
+
 type teamSyncFinishedMsg struct {
 	req    dto.TeamSyncRequest
 	result *frontend.TeamSyncResponse
@@ -426,7 +434,7 @@ type rootModel struct {
 
 	lastRefresh   time.Time
 	toast         toastState
-	viewScrolls   [8]int
+	viewScrolls   [9]int
 	overlayScroll int
 	pendingG      bool
 
@@ -435,6 +443,7 @@ type rootModel struct {
 	releases  releasesModel
 	packages  packagesModel
 	bugs      bugsModel
+	sru       sruModel
 	reviews   reviewsModel
 	commits   commitsModel
 	projects  projectsModel
@@ -455,6 +464,7 @@ type rootModel struct {
 	buildCleanupForm  formModalModel
 	packageFilterForm formModalModel
 	bugFilterForm     formModalModel
+	sruFilterForm     formModalModel
 	reviewFilterForm  formModalModel
 	commitFilterForm  formModalModel
 	projectFilterForm formModalModel
@@ -779,6 +789,12 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err == nil {
 			m.cache.status = msg.status
 		}
+	case sruLoadedMsg:
+		m.sru.err = errString(msg.err)
+		if msg.err == nil {
+			m.sru.snapshot = msg.snapshot
+			m.sru.index = clampIndex(m.sru.index, len(msg.snapshot.Rows))
+		}
 	case projectSyncFinishedMsg:
 		if msg.err != nil {
 			m.syncModal.err = msg.err.Error()
@@ -1017,13 +1033,16 @@ func (m rootModel) updateGlobal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "8":
 		m.activeView = viewProjects
 		return m, nil
+	case "9":
+		m.activeView = viewSRU
+		return m, nil
 	case "tab":
-		m.activeView = (m.activeView + 1) % 8
+		m.activeView = (m.activeView + 1) % 9
 		return m, nil
 	case "shift+tab":
 		m.activeView--
 		if m.activeView < 0 {
-			m.activeView = viewProjects
+			m.activeView = viewSRU
 		}
 		return m, nil
 	case "r":
@@ -1051,6 +1070,10 @@ func (m rootModel) updateGlobal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case viewBugs:
 			m.bugFilterForm = newBugFilterForm(m.session, m.bugs)
 			m.overlay = overlayBugFilters
+			m.overlayScroll = 0
+		case viewSRU:
+			m.sruFilterForm = newSRUFilterForm(m.sru)
+			m.overlay = overlaySRUFilters
 			m.overlayScroll = 0
 		case viewReviews:
 			m.reviewFilterForm = newReviewFilterForm(m.session, m.reviews)
@@ -1144,6 +1167,10 @@ func (m rootModel) updateGlobal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if m.projects.index > 0 {
 				m.projects.index--
 			}
+		case viewSRU:
+			if m.sru.index > 0 {
+				m.sru.index--
+			}
 		}
 		m.ensureCursorVisible()
 	case "down", "j":
@@ -1194,6 +1221,10 @@ func (m rootModel) updateGlobal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if m.projects.index < len(m.projects.rows)-1 {
 				m.projects.index++
 			}
+		case viewSRU:
+			if m.sru.snapshot != nil && m.sru.index < len(m.sru.snapshot.Rows)-1 {
+				m.sru.index++
+			}
 		}
 		m.ensureCursorVisible()
 	case "enter":
@@ -1241,10 +1272,17 @@ func (m rootModel) updateGlobal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 	case "R":
+		if m.activeView == viewSRU {
+			return m, refreshSRUCmd(m.session, m.sru.filter)
+		}
 		if m.activeView == viewBuilds {
 			if b := selectedBuild(m.builds.rows, m.builds.index); b != nil && b.CanRetry {
 				return m, retryBuildCmd(m.session, *b)
 			}
+		}
+	case "O":
+		if m.activeView == viewSRU && m.sru.snapshot != nil && m.sru.index >= 0 && m.sru.index < len(m.sru.snapshot.Rows) {
+			return m, openSRUBugCmd(m.session, m.sru.snapshot.Rows[m.sru.index].BugURL)
 		}
 	case "X":
 		if m.activeView == viewBuilds {
@@ -1398,7 +1436,7 @@ func (m rootModel) updateOverlay(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.cache.selected--
 			}
 		case "down", "j":
-			if m.cache.selected < cacheActionReviews {
+			if m.cache.selected < cacheActionSRU {
 				m.cache.selected++
 			}
 		case "s":
@@ -1517,6 +1555,9 @@ func (m rootModel) updateOverlay(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case overlayBugFilters:
 		m.pendingG = false
 		return m.updateBugFilterForm(msg)
+	case overlaySRUFilters:
+		m.pendingG = false
+		return m.updateSRUFilterForm(msg)
 	case overlayReviewFilters:
 		m.pendingG = false
 		return m.updateReviewFilterForm(msg)
@@ -1625,6 +1666,7 @@ func (m rootModel) initialLoadCmd(cfg *dto.Config) tea.Cmd {
 		loadReleasesCmd(m.session, m.releases.filters),
 		loadPackagesCmd(m.session, m.packages.filters),
 		loadBugsCmd(m.session, m.bugs.filters),
+		loadSRUCmd(m.session, m.sru.filter),
 		loadReviewsCmd(m.session, m.reviews.filters),
 		loadCommitsCmd(m.session, m.commits.filters),
 	}
@@ -1678,6 +1720,8 @@ func parseTUIPane(raw string) (viewID, bool) {
 		return viewCommits, true
 	case "projects":
 		return viewProjects, true
+	case "sru":
+		return viewSRU, true
 	default:
 		return viewDashboard, false
 	}
@@ -1964,6 +2008,7 @@ func (m rootModel) renderTabs() string {
 		m.renderTab("6 Reviews", m.activeView == viewReviews),
 		m.renderTab("7 Commits", m.activeView == viewCommits),
 		m.renderTab("8 Projects", m.activeView == viewProjects),
+		m.renderTab("9 SRUs", m.activeView == viewSRU),
 	}
 	return lipgloss.JoinHorizontal(lipgloss.Top, tabs...)
 }
@@ -1993,6 +2038,8 @@ func (m rootModel) renderContent() string {
 		return m.renderCommits()
 	case viewProjects:
 		return m.renderProjects()
+	case viewSRU:
+		return m.renderSRU()
 	default:
 		return ""
 	}
@@ -2172,6 +2219,8 @@ func (m rootModel) renderOverlay(base string) string {
 		content = renderFormModal(m.theme, m.packageFilterForm, m.width, m.height)
 	case overlayBugFilters:
 		content = renderFormModal(m.theme, m.bugFilterForm, m.width, m.height)
+	case overlaySRUFilters:
+		content = renderFormModal(m.theme, m.sruFilterForm, m.width, m.height)
 	case overlayReviewFilters:
 		content = renderFormModal(m.theme, m.reviewFilterForm, m.width, m.height)
 	case overlayCommitFilters:
@@ -2212,7 +2261,7 @@ func isCenteredFormOverlay(kind overlayKind) bool {
 func (m rootModel) renderHelp() string {
 	body := strings.Join([]string{
 		"Shortcuts",
-		"1..8 switch workflow",
+		"1..9 switch workflow",
 		"Tab / Shift+Tab cycle workflows",
 		"[ / ] cycle submodes on Packages and Commits",
 		"j/k or arrows move selection",
@@ -2223,7 +2272,8 @@ func (m rootModel) renderHelp() string {
 		"/ edit filters",
 		"m or ? open this meta pane",
 		"a auth  o operations  c cache  u sync  l logs  s server",
-		"r refresh  q quit  esc close overlay",
+		"r reload snapshot  R refresh SRUs  O open SRU bug",
+		"q quit  esc close overlay",
 		"",
 		"Forms",
 		"Tab / Shift+Tab move between fields",
@@ -2400,6 +2450,8 @@ func (m rootModel) refreshActiveView() tea.Cmd {
 		return tea.Batch(loadPackagesCmd(m.session, m.packages.filters), loadPackageDetailCmd(m.session, m.packages))
 	case viewBugs:
 		return tea.Batch(loadBugsCmd(m.session, m.bugs.filters), loadBugDetailCmdIfSelected(m.session, selectedBug(m.bugs.rows, m.bugs.index)))
+	case viewSRU:
+		return loadSRUCmd(m.session, m.sru.filter)
 	case viewReviews:
 		return tea.Batch(loadReviewsCmd(m.session, m.reviews.filters), loadReviewDetailCmdIfSelected(m.session, selectedReview(m.reviews.rows, m.reviews.index)))
 	case viewCommits:
@@ -2432,6 +2484,8 @@ func (m rootModel) jumpActiveTop() (tea.Model, tea.Cmd) {
 	case viewBugs:
 		m.bugs.index = 0
 		return m, loadBugDetailCmdIfSelected(m.session, selectedBug(m.bugs.rows, m.bugs.index))
+	case viewSRU:
+		m.sru.index = 0
 	case viewReviews:
 		m.reviews.index = 0
 		return m, loadReviewDetailCmdIfSelected(m.session, selectedReview(m.reviews.rows, m.reviews.index))
@@ -2470,6 +2524,10 @@ func (m rootModel) jumpActiveBottom() (tea.Model, tea.Cmd) {
 			m.bugs.index = len(m.bugs.rows) - 1
 		}
 		return m, loadBugDetailCmdIfSelected(m.session, selectedBug(m.bugs.rows, m.bugs.index))
+	case viewSRU:
+		if m.sru.snapshot != nil && len(m.sru.snapshot.Rows) > 0 {
+			m.sru.index = len(m.sru.snapshot.Rows) - 1
+		}
 	case viewReviews:
 		if len(m.reviews.rows) > 0 {
 			m.reviews.index = len(m.reviews.rows) - 1
@@ -2933,6 +2991,13 @@ func syncCacheCmd(session *runtimeadapter.Session, target cacheActionTarget, val
 				)
 				summary = append(summary, result.Warnings...)
 			}
+		case cacheActionSRU:
+			var result *dto.SRUSnapshot
+			result, err = session.Frontend.Cache().SyncSRU(ctx)
+			if err == nil {
+				action = "SRU cache sync completed"
+				summary = []string{fmt.Sprintf("Targets: %d", len(result.Rows))}
+			}
 		}
 		return cacheMutationFinishedMsg{action: action, summary: summary, err: err}
 	})
@@ -3142,6 +3207,8 @@ func newCacheSyncForm(session *runtimeadapter.Session, target cacheActionTarget)
 			{placeholder: "projects", value: "", resetValue: "", suggestions: projectSuggestions(session), kind: fieldKindMultiSelect},
 			{placeholder: "since", value: "", resetValue: ""},
 		})
+	case cacheActionSRU:
+		return newFormModal("Sync SRU Cache", nil)
 	default:
 		return newFormModal("Sync Cache", nil)
 	}
@@ -3171,6 +3238,8 @@ func newCacheClearForm(session *runtimeadapter.Session, target cacheActionTarget
 		return newFormModal("Clear Review Cache", []fieldDef{
 			{placeholder: "projects", value: "", resetValue: "", suggestions: projectSuggestions(session), kind: fieldKindMultiSelect},
 		})
+	case cacheActionSRU:
+		return newFormModal("Clear SRU Cache", nil)
 	default:
 		return newFormModal("Clear Cache", nil)
 	}
@@ -4204,6 +4273,8 @@ func (m rootModel) activeIndex() int {
 		return m.packages.index
 	case viewBugs:
 		return m.bugs.index
+	case viewSRU:
+		return m.sru.index
 	case viewReviews:
 		return m.reviews.index
 	case viewCommits:
@@ -4324,6 +4395,7 @@ func (m rootModel) cacheRows() []string {
 			"excuses       entries=0",
 			"releases      entries=0",
 			"reviews       entries=0",
+			"sru           targets=0",
 		}
 	}
 	refreshRequired := 0
@@ -4341,6 +4413,7 @@ func (m rootModel) cacheRows() []string {
 		fmt.Sprintf("%-13s entries=%d", "excuses", len(status.Excuses.Entries)),
 		fmt.Sprintf("%-13s entries=%d", "releases", len(status.Releases.Entries)),
 		fmt.Sprintf("%-13s entries=%d", "reviews", len(status.Reviews.Entries)),
+		fmt.Sprintf("%-13s targets=%d", "sru", status.SRU.Status.Targets),
 	}
 }
 
@@ -4371,6 +4444,8 @@ func cacheSyncActionID(target cacheActionTarget) frontend.ActionID {
 		return frontend.ActionCacheSyncReleases
 	case cacheActionReviews:
 		return frontend.ActionCacheSyncReviews
+	case cacheActionSRU:
+		return frontend.ActionCacheSyncSRU
 	default:
 		return frontend.ActionCacheSync
 	}
@@ -4392,6 +4467,8 @@ func cacheActionDisplayName(target cacheActionTarget) string {
 		return "release"
 	case cacheActionReviews:
 		return "review"
+	case cacheActionSRU:
+		return "SRU"
 	default:
 		return "selected"
 	}
@@ -4413,6 +4490,8 @@ func cacheActionTypeName(target cacheActionTarget) string {
 		return "releases"
 	case cacheActionReviews:
 		return "reviews"
+	case cacheActionSRU:
+		return "sru"
 	default:
 		return ""
 	}

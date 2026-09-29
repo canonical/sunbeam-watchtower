@@ -420,6 +420,7 @@ func NewConfiguredServer(logger *slog.Logger, application *app.App, serverOpts a
 	api.RegisterAuthAPI(srv.API(), application)
 	api.RegisterPackagesAPI(srv.API(), application)
 	api.RegisterBugsAPI(srv.API(), application)
+	api.RegisterSRUAPI(srv.API(), application)
 	api.RegisterCacheAPI(srv.API(), application)
 	api.RegisterConfigAPI(srv.API(), application)
 	api.RegisterReviewsAPI(srv.API(), application)

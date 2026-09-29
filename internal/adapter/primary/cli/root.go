@@ -180,6 +180,7 @@ func NewRootCmd(opts *Options) *cobra.Command {
 		withGroupID(newReviewCmd(opts), "workflow"),
 		withGroupID(newCommitCmd(opts), "workflow"),
 		withGroupID(newBugCmd(opts), "workflow"),
+		withGroupID(newSRUCmd(opts), "workflow"),
 		withGroupID(newBuildCmd(opts), "workflow"),
 		withGroupID(newReleasesCmd(opts), "workflow"),
 		withGroupID(newProjectCmd(opts), "workflow"),

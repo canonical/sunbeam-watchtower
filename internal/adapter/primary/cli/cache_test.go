@@ -54,6 +54,26 @@ func TestCacheSyncReleasesRendersCountsAndWarnings(t *testing.T) {
 	}
 }
 
+func TestCacheSyncSRUUsesCacheEndpointAndReportsTargets(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/v1/cache/sync/sru" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
+		}
+		_ = json.NewEncoder(w).Encode(dto.SRUSnapshot{Rows: []dto.SRURow{{BugID: "2167438"}, {BugID: "2167438"}}})
+	}))
+	defer server.Close()
+	var out bytes.Buffer
+	opts := &Options{Out: &out, ErrOut: &bytes.Buffer{}, Output: "table", Client: client.NewClient(server.URL), Logger: discardTestLogger()}
+	cmd := newCacheCmd(opts)
+	cmd.SetArgs([]string{"sync", "sru"})
+	if err := cmd.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "2 targets") {
+		t.Fatalf("stdout = %q", out.String())
+	}
+}
+
 func TestCacheSyncReviewsRendersCountsAndWarnings(t *testing.T) {
 	var gotBody client.CacheSyncReviewsOptions
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -36,6 +36,23 @@ func (c *Client) GetPublishedSources(ctx context.Context, archiveSelfLink string
 	return GetAllPages[SourcePublishing](ctx, c, u)
 }
 
+// GetPackageUploads reads queue entries for one Ubuntu series and source.
+func (c *Client) GetPackageUploads(ctx context.Context, seriesLink, source, status string) ([]PackageUpload, error) {
+	params := url.Values{"name": {source}, "exact_match": {"true"}, "pocket": {"Proposed"}}
+	if status != "" {
+		params.Set("status", status)
+	}
+	u := wsOpURL(seriesLink, "getPackageUploads", params)
+	return GetAllPages[PackageUpload](ctx, c, u)
+}
+
+// GetPublicationChangesURL resolves the changes file for a source publication.
+func (c *Client) GetPublicationChangesURL(ctx context.Context, publicationLink string) (string, error) {
+	var raw string
+	err := c.GetJSON(ctx, wsOpURL(publicationLink, "changesFileUrl", nil), &raw)
+	return raw, err
+}
+
 // PublishedSourceOpts holds optional filters for getPublishedSources.
 type PublishedSourceOpts struct {
 	SourceName       string

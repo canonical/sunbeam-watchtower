@@ -168,6 +168,10 @@ type CacheStatusResult struct {
 		Entries   []dto.ReviewCacheStatus `json:"entries"`
 		Error     string                  `json:"error,omitempty"`
 	} `json:"reviews"`
+	SRU struct {
+		Status dto.SRUCacheStatus `json:"status"`
+		Error  string             `json:"error,omitempty"`
+	} `json:"sru"`
 }
 
 // CacheStatus returns the full cache status (git + packages + upstream).

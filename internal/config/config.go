@@ -304,8 +304,9 @@ type DistroConfig struct {
 
 // BackportConfig defines a backport source group (e.g. UCA, OSBPO).
 type BackportConfig struct {
-	ParentRelease string               `mapstructure:"parent_release" yaml:"parent_release,omitempty"`
-	Sources       []DistroSourceConfig `mapstructure:"sources" yaml:"sources"`
+	ParentRelease     string               `mapstructure:"parent_release" yaml:"parent_release,omitempty"`
+	SRUParentRequired bool                 `mapstructure:"sru_parent_required" yaml:"sru_parent_required,omitempty"`
+	Sources           []DistroSourceConfig `mapstructure:"sources" yaml:"sources"`
 }
 
 // ExpandSuiteType expands a suite type name to its full APT suite name for a given release.
@@ -706,6 +707,20 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("packages.upstream: releases_repo is required for openstack provider")
 		}
 	}
+	for distroName, distro := range c.Packages.Distros {
+		for seriesName, release := range distro.Releases {
+			for backportName, backport := range release.Backports {
+				if backport.SRUParentRequired {
+					if distroName != "ubuntu" || backport.ParentRelease == "" {
+						return fmt.Errorf("packages.distros.%s.releases.%s.backports.%s: sru_parent_required requires an Ubuntu parent_release", distroName, seriesName, backportName)
+					}
+					if _, ok := distro.Releases[backport.ParentRelease]; !ok {
+						return fmt.Errorf("packages.distros.%s.releases.%s.backports.%s: parent_release %q is not configured", distroName, seriesName, backportName, backport.ParentRelease)
+					}
+				}
+			}
+		}
+	}
 	if err := validateOTelConfig(c.OTel); err != nil {
 		return err
 	}
@@ -817,7 +832,7 @@ func validateKnownKeys(prefix string, raw map[string]any, allowed map[string]boo
 
 func validateTUIConfig(cfg TUIConfig, root *Config) error {
 	if cfg.DefaultPane != "" && !isAllowedTUIPane(cfg.DefaultPane) {
-		return fmt.Errorf("tui.default_pane %q must be one of dashboard, builds, releases, packages, bugs, reviews, commits, or projects", cfg.DefaultPane)
+		return fmt.Errorf("tui.default_pane %q must be one of dashboard, builds, releases, packages, bugs, reviews, commits, projects, or sru", cfg.DefaultPane)
 	}
 	if cfg.Panes.Builds != nil {
 		if cfg.Panes.Builds.Filters.Source != "" && cfg.Panes.Builds.Filters.Source != "remote" && cfg.Panes.Builds.Filters.Source != "local" {
@@ -908,7 +923,7 @@ func validateTUIConfig(cfg TUIConfig, root *Config) error {
 
 func isAllowedTUIPane(raw string) bool {
 	switch raw {
-	case "dashboard", "builds", "releases", "packages", "bugs", "reviews", "commits", "projects":
+	case "dashboard", "builds", "releases", "packages", "bugs", "reviews", "commits", "projects", "sru":
 		return true
 	default:
 		return false

@@ -18,9 +18,10 @@ const (
 	cacheTypeExcuses       = "excuses"
 	cacheTypeReleases      = "releases"
 	cacheTypeReviews       = "reviews"
+	cacheTypeSRU           = "sru"
 )
 
-var allCacheTypes = []string{cacheTypeGit, cacheTypePackagesIndex, cacheTypePackageSets, cacheTypeUpstreamRepos, cacheTypeBugs, cacheTypeExcuses, cacheTypeReleases, cacheTypeReviews}
+var allCacheTypes = []string{cacheTypeGit, cacheTypePackagesIndex, cacheTypePackageSets, cacheTypeUpstreamRepos, cacheTypeBugs, cacheTypeExcuses, cacheTypeReleases, cacheTypeReviews, cacheTypeSRU}
 
 func validateCacheTypes(args []string) error {
 	for _, arg := range args {
@@ -171,6 +172,15 @@ func newCacheSyncCmd(opts *Options) *cobra.Command {
 					styler.Action("done"), result.ProjectsSynced, result.SummariesSynced, result.DetailsSynced)
 			}
 
+			if wantCacheType(args, cacheTypeSRU) {
+				fmt.Fprintf(progressOut, "%s SRU snapshot...\n", styler.Action("syncing"))
+				result, err := workflow.SyncSRU(cmd.Context())
+				if err != nil {
+					return err
+				}
+				fmt.Fprintf(progressOut, "SRU cache sync %s (%d targets).\n", styler.Action("done"), len(result.Rows))
+			}
+
 			return nil
 		},
 	}, "cache.sync")
@@ -272,6 +282,14 @@ func newCacheClearCmd(opts *Options) *cobra.Command {
 				fmt.Fprintf(progressOut, "review cache %s.\n", styler.Action("cleared"))
 			}
 
+			if wantCacheType(args, cacheTypeSRU) {
+				fmt.Fprintf(progressOut, "%s SRU snapshot...\n", styler.Action("clearing"))
+				if err := workflow.Clear(cmd.Context(), frontend.CacheClearRequest{Type: cacheTypeSRU}); err != nil {
+					return err
+				}
+				fmt.Fprintf(progressOut, "SRU cache %s.\n", styler.Action("cleared"))
+			}
+
 			return nil
 		},
 	}, frontend.ActionCacheClear)
@@ -320,6 +338,8 @@ func newCacheStatusCmd(opts *Options) *cobra.Command {
 			status.Reviews.Entries = append(status.Reviews.Entries, result.Reviews.Entries...)
 			status.Reviews.Directory = result.Reviews.Directory
 			status.Reviews.Error = result.Reviews.Error
+			status.SRU.Status = result.SRU.Status
+			status.SRU.Error = result.SRU.Error
 
 			return renderCacheFullStatus(opts.Out, opts.Output, newOutputStylerForOptions(opts, opts.Out, opts.Output), &status)
 		},

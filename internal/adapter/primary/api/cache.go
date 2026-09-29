@@ -55,7 +55,7 @@ type CacheSyncUpstreamOutput struct {
 
 // CacheDeleteInput is the request for DELETE /api/v1/cache/{type}.
 type CacheDeleteInput struct {
-	Type     string   `path:"type" doc:"Cache type to clear (git, packages-index, upstream-repos, bugs, excuses, releases, reviews)"`
+	Type     string   `path:"type" doc:"Cache type to clear (git, packages-index, packagesets, upstream-repos, bugs, excuses, releases, reviews, sru)"`
 	Projects []string `query:"project" required:"false" doc:"Clear only these projects (git/bugs/reviews types only)"`
 	Trackers []string `query:"tracker" required:"false" doc:"Clear only these excuses trackers (excuses type only)"`
 }
@@ -159,6 +159,10 @@ type CacheStatusOutput struct {
 			Entries   []dto.ReviewCacheStatus `json:"entries"`
 			Error     string                  `json:"error,omitempty"`
 		} `json:"reviews"`
+		SRU struct {
+			Status dto.SRUCacheStatus `json:"status"`
+			Error  string             `json:"error,omitempty"`
+		} `json:"sru"`
 	}
 }
 
@@ -166,6 +170,16 @@ type CacheStatusOutput struct {
 
 // RegisterCacheAPI registers all cache-related endpoints on the given huma API.
 func RegisterCacheAPI(api huma.API, application *app.App) {
+	huma.Register(api, huma.Operation{
+		OperationID: "cache-sync-sru", Method: http.MethodPost, Path: "/api/v1/cache/sync/sru",
+		Summary: "Synchronize the local SRU snapshot from Launchpad", Tags: []string{"cache"},
+	}, func(ctx context.Context, _ *struct{}) (*sruOutput, error) {
+		result, err := frontend.NewServerFacade(application).SRU().Refresh(ctx)
+		if err != nil {
+			return nil, huma.Error500InternalServerError(fmt.Sprintf("syncing SRUs: %v", err))
+		}
+		return &sruOutput{Body: *result}, nil
+	})
 	// POST /api/v1/cache/sync/git
 	huma.Register(api, huma.Operation{
 		OperationID: "cache-sync-git",
@@ -542,9 +556,14 @@ func RegisterCacheAPI(api huma.API, application *app.App) {
 				}
 			}
 
+		case "sru":
+			if err := application.ClearSRUCache(); err != nil {
+				return nil, huma.Error500InternalServerError(fmt.Sprintf("clearing SRU cache: %v", err))
+			}
+
 		default:
 			return nil, huma.Error400BadRequest(
-				fmt.Sprintf("unknown cache type %q (valid: git, packages-index, upstream-repos, bugs, excuses, releases, reviews)", input.Type))
+				fmt.Sprintf("unknown cache type %q (valid: git, packages-index, packagesets, upstream-repos, bugs, excuses, releases, reviews, sru)", input.Type))
 		}
 
 		out := &CacheDeleteOutput{}
@@ -679,6 +698,12 @@ func RegisterCacheAPI(api huma.API, application *app.App) {
 			} else {
 				out.Body.Reviews.Entries = statuses
 			}
+		}
+		sruStatus, sruErr := application.SRUCacheStatus()
+		if sruErr != nil {
+			out.Body.SRU.Error = sruErr.Error()
+		} else {
+			out.Body.SRU.Status = sruStatus
 		}
 
 		return out, nil

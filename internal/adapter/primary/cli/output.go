@@ -1048,6 +1048,10 @@ type cacheFullStatus struct {
 		Entries   []dto.ReviewCacheStatus `json:"entries" yaml:"entries"`
 		Error     string                  `json:"error,omitempty" yaml:"error,omitempty"`
 	} `json:"reviews" yaml:"reviews"`
+	SRU struct {
+		Status dto.SRUCacheStatus `json:"status" yaml:"status"`
+		Error  string             `json:"error,omitempty" yaml:"error,omitempty"`
+	} `json:"sru" yaml:"sru"`
 }
 
 func renderCacheFullStatus(w io.Writer, format string, styler *outputStyler, status *cacheFullStatus) error {
@@ -1250,6 +1254,19 @@ func renderCacheFullStatusTable(w io.Writer, styler *outputStyler, status *cache
 		if err := renderStyledTable(w, styler, headers, rows); err != nil {
 			return err
 		}
+	}
+
+	fmt.Fprintln(w)
+	if err := writeSectionTitle(w, styler, "=== OpenStack SRUs ==="); err != nil {
+		return err
+	}
+	if status.SRU.Error != "" {
+		fmt.Fprintf(w, "  %s\n", styler.Error("(unavailable: "+status.SRU.Error+")"))
+	} else if status.SRU.Status.SyncedAt.IsZero() {
+		fmt.Fprintln(w, " ", styler.Placeholder("(not synced)"))
+	} else {
+		fmt.Fprintf(w, "  %d targets (synced %s)\n", status.SRU.Status.Targets,
+			status.SRU.Status.SyncedAt.Format("2006-01-02 15:04 UTC"))
 	}
 
 	return nil

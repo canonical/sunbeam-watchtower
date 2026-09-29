@@ -152,6 +152,28 @@ tui:
 	}
 }
 
+func TestValidateSRUParentGateRequiresConfiguredUbuntuParent(t *testing.T) {
+	cfg := Config{Packages: PackagesConfig{Distros: map[string]DistroConfig{
+		"ubuntu": {Releases: map[string]ReleaseConfig{
+			"resolute": {},
+			"noble": {Backports: map[string]BackportConfig{
+				"gazpacho": {ParentRelease: "resolute", SRUParentRequired: true},
+			}},
+		}},
+	}}}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("valid gate rejected: %v", err)
+	}
+	backport := cfg.Packages.Distros["ubuntu"].Releases["noble"].Backports["gazpacho"]
+	backport.ParentRelease = "plucky"
+	release := cfg.Packages.Distros["ubuntu"].Releases["noble"]
+	release.Backports["gazpacho"] = backport
+	cfg.Packages.Distros["ubuntu"].Releases["noble"] = release
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("unconfigured SRU parent accepted")
+	}
+}
+
 func TestLoad_Defaults(t *testing.T) {
 	cfg, err := Load("")
 	if err != nil {
@@ -213,9 +235,7 @@ func TestValidate_ValidConfig(t *testing.T) {
 	cfg := &Config{
 		Packages: PackagesConfig{
 			Distros: map[string]DistroConfig{
-				"ubuntu": {
-
-				},
+				"ubuntu": {},
 			},
 		},
 		Projects: []ProjectConfig{
@@ -1060,7 +1080,7 @@ func TestValidateTUIConfig_AllPaneEnumsAccepted(t *testing.T) {
 						Reverse:        &reverse,
 					},
 				},
-				Bugs: &TUIBugsPaneConfig{Filters: TUIBugsFiltersConfig{Status: "Fix Released", Importance: "Critical", Merge: &merge}},
+				Bugs:    &TUIBugsPaneConfig{Filters: TUIBugsFiltersConfig{Status: "Fix Released", Importance: "Critical", Merge: &merge}},
 				Reviews: &TUIReviewsPaneConfig{Filters: TUIReviewsFiltersConfig{Forge: "github", State: "wip"}},
 				Commits: &TUICommitsPaneConfig{Mode: "track", Filters: TUICommitsFiltersConfig{Forge: "gerrit", IncludeMRs: &includeMRs}},
 				Projects: &TUIProjectsPaneConfig{Filters: TUIProjectsFiltersConfig{
@@ -1083,9 +1103,7 @@ func TestValidateTUIConfig_InvalidValues(t *testing.T) {
 	base := &Config{
 		Packages: PackagesConfig{
 			Distros: map[string]DistroConfig{
-				"ubuntu": {
-
-				},
+				"ubuntu": {},
 			},
 		},
 	}

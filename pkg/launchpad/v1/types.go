@@ -362,6 +362,17 @@ type SourcePublishing struct {
 	ScheduledDeletionDate *Time  `json:"scheduled_deletion_date,omitempty"`
 }
 
+// PackageUpload is a pending Ubuntu archive queue item.
+type PackageUpload struct {
+	SelfLink       string `json:"self_link"`
+	PackageName    string `json:"package_name"`
+	PackageVersion string `json:"package_version"`
+	Status         string `json:"status"`
+	Pocket         string `json:"pocket"`
+	ChangesFileURL string `json:"changes_file_url"`
+	DistroSeries   string `json:"distroseries_link"`
+}
+
 // BinaryPublishing represents a binary package publishing history entry.
 type BinaryPublishing struct {
 	SelfLink               string `json:"self_link"`

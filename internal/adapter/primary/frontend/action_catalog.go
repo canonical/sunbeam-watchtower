@@ -67,6 +67,9 @@ const (
 	ActionBugSearch             ActionID = "bug.search"
 	ActionBugSyncDryRun         ActionID = "bug.sync.dry_run"
 	ActionBugSyncApply          ActionID = "bug.sync.apply"
+	ActionSRUList               ActionID = "sru.list"
+	ActionSRUShow               ActionID = "sru.show"
+	ActionSRUOpen               ActionID = "sru.open"
 	ActionCacheStatus           ActionID = "cache.status"
 	ActionCacheSync             ActionID = "cache.sync"
 	ActionCacheSyncGit          ActionID = "cache.sync.git"
@@ -77,6 +80,7 @@ const (
 	ActionCacheSyncExcuses      ActionID = "cache.sync.excuses"
 	ActionCacheSyncReleases     ActionID = "cache.sync.releases"
 	ActionCacheSyncReviews      ActionID = "cache.sync.reviews"
+	ActionCacheSyncSRU          ActionID = "cache.sync.sru"
 	ActionCacheClear            ActionID = "cache.clear"
 	ActionCommitLog             ActionID = "commit.log"
 	ActionCommitTrack           ActionID = "commit.track"
@@ -157,6 +161,9 @@ var actionCatalog = map[ActionID]ActionDescriptor{
 	ActionBugSearch:             descriptor(ActionBugSearch, "bug", "bug", MutabilityRead, LocalEffectNone, RuntimeEmbeddedOK, ExportPolicyAllowed, "Search bugs with match explanations."),
 	ActionBugSyncDryRun:         descriptor(ActionBugSyncDryRun, "bug", "bug", MutabilityRead, LocalEffectNone, RuntimeEmbeddedOK, ExportPolicyAllowed, "Preview bug synchronization."),
 	ActionBugSyncApply:          descriptor(ActionBugSyncApply, "bug", "bug", MutabilityWrite, LocalEffectNone, RuntimeEmbeddedOK, ExportPolicyAllowed, "Synchronize bug state from cached commits."),
+	ActionSRUList:               descriptor(ActionSRUList, "sru", "sru", MutabilityRead, LocalEffectRead, RuntimeEmbeddedOK, ExportPolicyAllowed, "List monitored OpenStack SRUs."),
+	ActionSRUShow:               descriptor(ActionSRUShow, "sru", "sru", MutabilityRead, LocalEffectRead, RuntimeEmbeddedOK, ExportPolicyAllowed, "Show one monitored SRU."),
+	ActionSRUOpen:               descriptor(ActionSRUOpen, "sru", "sru", MutabilityRead, LocalEffectWrite, RuntimeEmbeddedOK, ExportPolicyHidden, "Open a monitored SRU in Launchpad."),
 	ActionCacheStatus:           descriptor(ActionCacheStatus, "cache", "cache", MutabilityRead, LocalEffectRead, RuntimeEmbeddedOK, ExportPolicyAllowed, "Show cache status."),
 	ActionCacheSync:             descriptor(ActionCacheSync, "cache", "cache", MutabilityWrite, LocalEffectRead, RuntimeEmbeddedOK, ExportPolicyAllowed, "Synchronize multiple cache types."),
 	ActionCacheSyncGit:          descriptor(ActionCacheSyncGit, "cache", "cache", MutabilityWrite, LocalEffectRead, RuntimeEmbeddedOK, ExportPolicyAllowed, "Synchronize git caches."),
@@ -167,6 +174,7 @@ var actionCatalog = map[ActionID]ActionDescriptor{
 	ActionCacheSyncExcuses:      descriptor(ActionCacheSyncExcuses, "cache", "cache", MutabilityWrite, LocalEffectRead, RuntimeEmbeddedOK, ExportPolicyAllowed, "Synchronize excuses caches."),
 	ActionCacheSyncReleases:     descriptor(ActionCacheSyncReleases, "cache", "cache", MutabilityWrite, LocalEffectRead, RuntimeEmbeddedOK, ExportPolicyAllowed, "Synchronize release caches."),
 	ActionCacheSyncReviews:      descriptor(ActionCacheSyncReviews, "cache", "cache", MutabilityWrite, LocalEffectRead, RuntimeEmbeddedOK, ExportPolicyAllowed, "Synchronize review caches."),
+	ActionCacheSyncSRU:          descriptor(ActionCacheSyncSRU, "cache", "cache", MutabilityWrite, LocalEffectWrite, RuntimeEmbeddedOK, ExportPolicyAllowed, "Synchronize the local SRU snapshot from Launchpad."),
 	ActionCacheClear:            descriptor(ActionCacheClear, "cache", "cache", MutabilityWrite, LocalEffectWrite, RuntimeEmbeddedOK, ExportPolicyAllowed, "Clear cached data."),
 	ActionCommitLog:             descriptor(ActionCommitLog, "commit", "commit", MutabilityRead, LocalEffectNone, RuntimeEmbeddedOK, ExportPolicyAllowed, "List commits."),
 	ActionCommitTrack:           descriptor(ActionCommitTrack, "commit", "commit", MutabilityRead, LocalEffectNone, RuntimeEmbeddedOK, ExportPolicyAllowed, "Track commits related to a bug."),
