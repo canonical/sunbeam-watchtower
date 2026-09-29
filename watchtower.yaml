@@ -289,10 +289,22 @@ packages:
                   suites: [noble-updates/gazpacho, noble-proposed/gazpacho]
                   components: [main]
         plucky:
-          suites: [release, updates, proposed]
+          suites:  [release, updates, proposed]
         questing:
-          suites: [release, updates, proposed]
+          suites:  [release, updates, proposed]
         resolute:
+          suites: [release, updates, proposed]
+          backports:
+            hibiscus:
+              parent_release: stonking
+              sources:
+                - mirror: https://ppa.launchpadcontent.net/ubuntu-cloud-archive/hibiscus-staging/ubuntu
+                  suites: [release]
+                  components: [main]
+                - mirror: https://ubuntu-cloud.archive.canonical.com/ubuntu
+                  suites: [resolute-updates/hibiscus, resolute-proposed/hibiscus]
+                  components: [main]
+        stonking:
           suites: [release, updates, proposed]
     debian:
       mirror: http://ftp.debian.org/debian
