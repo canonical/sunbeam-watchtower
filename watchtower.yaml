@@ -235,7 +235,7 @@ packages:
         team_url: https://ubuntu-archive-team.ubuntu.com/proposed-migration/update_excuses_by_team.yaml
       releases:
         focal:
-          suites: [release, updates, proposed]
+          suites: [release, updates, proposed, security]
           backports:
             yoga:
               parent_release: jammy
@@ -247,7 +247,7 @@ packages:
                   suites: [focal-updates/yoga, focal-proposed/yoga]
                   components: [main]
         jammy:
-          suites: [release, updates, proposed]
+          suites: [release, updates, proposed, security]
           backports:
             caracal:
               parent_release: noble
@@ -259,7 +259,7 @@ packages:
                   suites: [jammy-updates/caracal, jammy-proposed/caracal]
                   components: [main]
         noble:
-          suites: [release, updates, proposed]
+          suites: [release, updates, proposed, security]
           backports:
             epoxy:
               parent_release: plucky
@@ -289,11 +289,11 @@ packages:
                   suites: [noble-updates/gazpacho, noble-proposed/gazpacho]
                   components: [main]
         plucky:
-          suites:  [release, updates, proposed]
+          suites:  [release, updates, proposed, security]
         questing:
-          suites:  [release, updates, proposed]
+          suites:  [release, updates, proposed, security]
         resolute:
-          suites: [release, updates, proposed]
+          suites: [release, updates, proposed, security]
           backports:
             hibiscus:
               parent_release: stonking
@@ -305,7 +305,7 @@ packages:
                   suites: [resolute-updates/hibiscus, resolute-proposed/hibiscus]
                   components: [main]
         stonking:
-          suites: [release, updates, proposed]
+          suites: [release, updates, proposed, security]
     debian:
       mirror: http://ftp.debian.org/debian
       components: [main]
