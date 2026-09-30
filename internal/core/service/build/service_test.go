@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -263,7 +264,10 @@ func TestDownloadAttemptsRemainingFilesAfterFailure(t *testing.T) {
 	}
 
 	attempts := map[string]int{}
+	var attemptsMu sync.Mutex
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attemptsMu.Lock()
+		defer attemptsMu.Unlock()
 		attempts[r.URL.Path]++
 		switch r.URL.Path {
 		case "/bad.charm":
@@ -366,7 +370,10 @@ func TestDownloadRetryCountAppliesPerFile(t *testing.T) {
 	}
 
 	attempts := map[string]int{}
+	var attemptsMu sync.Mutex
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attemptsMu.Lock()
+		defer attemptsMu.Unlock()
 		attempts[r.URL.Path]++
 		if attempts[r.URL.Path] == 1 {
 			http.Error(w, "temporary", http.StatusInternalServerError)
@@ -1669,4 +1676,124 @@ func recipeKeys(m map[string]*dto.Recipe) []string {
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+func TestDownloadConcurrentTransfers(t *testing.T) {
+	for _, cancelTransfers := range []bool{false, true} {
+		name := "complete"
+		if cancelTransfers {
+			name = "cancel"
+		}
+		t.Run(name, func(t *testing.T) {
+			started := make(chan struct{}, 8)
+			release := make(chan struct{})
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				started <- struct{}{}
+				select {
+				case <-release:
+					_, _ = w.Write([]byte("artifact"))
+				case <-r.Context().Done():
+				}
+			}))
+			defer ts.Close()
+			defer close(release)
+			builder := &mockRecipeBuilder{
+				recipes:  make(map[string]*dto.Recipe),
+				builds:   make(map[string][]dto.Build),
+				fileURLs: make(map[string][]string),
+			}
+			for _, recipe := range []string{"first", "second"} {
+				builder.recipes[recipe] = &dto.Recipe{Name: recipe, SelfLink: recipe}
+				builder.builds[recipe] = []dto.Build{{State: dto.BuildSucceeded, SelfLink: recipe}}
+				for i := range 4 {
+					builder.fileURLs[recipe] = append(builder.fileURLs[recipe], fmt.Sprintf("%s/%s-%d.rock", ts.URL, recipe, i))
+				}
+			}
+			svc := NewService(map[string]ProjectBuilder{
+				"sunbeam": {Builder: builder, Artifacts: []string{"first", "second"}},
+			}, nil, testLogger())
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			outputDir := t.TempDir()
+			result := make(chan error, 1)
+			go func() {
+				result <- svc.Download(ctx, DownloadOpts{OutputDir: outputDir, RetryCount: 2})
+			}()
+			for range 4 {
+				select {
+				case <-started:
+				case <-ctx.Done():
+					t.Fatal("four transfers did not start concurrently")
+				}
+			}
+			select {
+			case <-started:
+				t.Fatal("more than four transfers started before a slot was freed")
+			case <-time.After(100 * time.Millisecond):
+			}
+			if cancelTransfers {
+				cancel()
+			} else {
+				// Let both waves finish, keeping the deferred close for cleanup.
+				for range 8 {
+					select {
+					case release <- struct{}{}:
+					case <-ctx.Done():
+						t.Fatal("transfers did not finish")
+					}
+				}
+			}
+			select {
+			case err := <-result:
+				if cancelTransfers {
+					var downloadErr *DownloadError
+					if !errors.As(err, &downloadErr) || len(downloadErr.Failures) != 8 {
+						t.Fatalf("Download() = %v, want eight cancellation failures", err)
+					}
+					for _, failure := range downloadErr.Failures {
+						if !errors.Is(failure.Err, context.Canceled) {
+							t.Fatalf("failure = %v, want context.Canceled", failure)
+						}
+					}
+				} else {
+					if err != nil {
+						t.Fatalf("Download() = %v", err)
+					}
+					for _, recipe := range []string{"first", "second"} {
+						for i := range 4 {
+							data, err := os.ReadFile(filepath.Join(outputDir, recipe, fmt.Sprintf("%s-%d.rock", recipe, i)))
+							if err != nil || string(data) != "artifact" {
+								t.Fatalf("downloaded artifact = %q, %v", data, err)
+							}
+						}
+					}
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatal("Download() did not return")
+			}
+		})
+	}
+}
+
+func TestDownloadPreservesSameDestinationOrder(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(r.URL.Path))
+	}))
+	defer ts.Close()
+	builder := &mockRecipeBuilder{
+		recipes:  map[string]*dto.Recipe{"keystone": {Name: "keystone", SelfLink: "keystone"}},
+		builds:   map[string][]dto.Build{"keystone": {{State: dto.BuildSucceeded, SelfLink: "build"}}},
+		fileURLs: map[string][]string{"build": {ts.URL + "/first/shared.rock", ts.URL + "/second/shared.rock"}},
+	}
+	svc := NewService(map[string]ProjectBuilder{
+		"sunbeam": {Builder: builder, Artifacts: []string{"keystone"}},
+	}, nil, testLogger())
+	outputDir := t.TempDir()
+	if err := svc.Download(context.Background(), DownloadOpts{OutputDir: outputDir}); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(outputDir, "keystone", "shared.rock"))
+	if err != nil || string(data) != "/second/shared.rock" {
+		t.Fatalf("final artifact = %q, %v, want second download", data, err)
+	}
 }

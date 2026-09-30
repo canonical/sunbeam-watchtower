@@ -22,7 +22,7 @@ import (
 	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
 )
 
-// defaultConcurrency is the max number of parallel LP API operations.
+// defaultConcurrency is the max number of parallel LP operations or artifact transfers.
 const defaultConcurrency = 4
 
 // RecipeAction is the action determined for a recipe after assessment.
@@ -897,7 +897,13 @@ func (s *Service) Download(ctx context.Context, opts DownloadOpts) error {
 	for _, p := range opts.Projects {
 		projFilter[p] = true
 	}
-	var failures []DownloadFileError
+	var downloads []*DownloadFileError
+	var wg sync.WaitGroup
+	defer wg.Wait() // Discovery errors must also wait for started transfers.
+	slots := make(chan struct{}, defaultConcurrency)
+	// Keep writes to the same destination in discovery order.
+	destinations := make(map[string]chan struct{})
+	client := s.artifactDownloadClient()
 
 	for name, pb := range s.projects {
 		if len(projFilter) > 0 && !projFilter[name] {
@@ -961,19 +967,37 @@ func (s *Service) Download(ctx context.Context, opts DownloadOpts) error {
 					continue
 				}
 				for _, u := range urls {
-					if err := downloadFile(ctx, s.artifactDownloadClient(), u, opts.OutputDir, recipeName, opts.RetryCount); err != nil {
-						failures = append(failures, DownloadFileError{
-							Project:       name,
-							Recipe:        recipeName,
-							Arch:          b.Arch,
-							BuildURL:      b.WebLink,
-							BuildSelfLink: b.SelfLink,
-							FileURL:       u,
-							Err:           err,
-						})
+					dest := filepath.Join(opts.OutputDir, recipeName, path.Base(u))
+					if previous := destinations[dest]; previous != nil {
+						<-previous
 					}
+					done := make(chan struct{})
+					destinations[dest] = done
+					file := &DownloadFileError{
+						Project:       name,
+						Recipe:        recipeName,
+						Arch:          b.Arch,
+						BuildURL:      b.WebLink,
+						BuildSelfLink: b.SelfLink,
+						FileURL:       u,
+					}
+					downloads = append(downloads, file)
+					slots <- struct{}{}
+					wg.Add(1)
+					go func() {
+						defer wg.Done()
+						defer func() { <-slots; close(done) }()
+						file.Err = downloadFile(ctx, client, file.FileURL, opts.OutputDir, file.Recipe, opts.RetryCount)
+					}()
 				}
 			}
+		}
+	}
+	wg.Wait()
+	var failures []DownloadFileError
+	for _, file := range downloads {
+		if file.Err != nil {
+			failures = append(failures, *file)
 		}
 	}
 	if len(failures) > 0 {
