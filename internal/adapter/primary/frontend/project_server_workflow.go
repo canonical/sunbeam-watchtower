@@ -6,9 +6,9 @@ package frontend
 import (
 	"context"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/app"
-	projectsvc "github.com/gboutry/sunbeam-watchtower/internal/core/service/project"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/app"
+	projectsvc "github.com/canonical/sunbeam-watchtower/internal/core/service/project"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 // ProjectServerWorkflow exposes reusable server-side project workflows for the HTTP API.

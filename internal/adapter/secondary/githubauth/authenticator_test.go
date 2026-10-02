@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	gh "github.com/gboutry/sunbeam-watchtower/pkg/github/v1"
+	gh "github.com/canonical/sunbeam-watchtower/pkg/github/v1"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)

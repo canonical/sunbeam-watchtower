@@ -9,7 +9,7 @@ import (
 	"sort"
 	"sync"
 
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 // MemoryStore keeps operation snapshots and events in process memory.

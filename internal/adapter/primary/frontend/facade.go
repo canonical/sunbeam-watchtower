@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/app"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/service/build"
-	opsvc "github.com/gboutry/sunbeam-watchtower/internal/core/service/operation"
-	projectsvc "github.com/gboutry/sunbeam-watchtower/internal/core/service/project"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/app"
+	"github.com/canonical/sunbeam-watchtower/internal/core/service/build"
+	opsvc "github.com/canonical/sunbeam-watchtower/internal/core/service/operation"
+	projectsvc "github.com/canonical/sunbeam-watchtower/internal/core/service/project"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 // Facade exposes frontend-oriented wrappers on top of the generic operation service.

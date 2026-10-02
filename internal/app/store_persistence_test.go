@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
-	lp "github.com/gboutry/sunbeam-watchtower/pkg/launchpad/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
+	lp "github.com/canonical/sunbeam-watchtower/pkg/launchpad/v1"
 )
 
 func discardLogger() *slog.Logger {

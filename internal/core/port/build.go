@@ -7,7 +7,7 @@ import (
 	"context"
 	"time"
 
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 // RecipeBuilder abstracts LP recipe operations for a specific artifact type.

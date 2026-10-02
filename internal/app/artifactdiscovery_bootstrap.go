@@ -4,8 +4,8 @@
 package app
 
 import (
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/gitcache"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/service/artifactdiscovery"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/gitcache"
+	"github.com/canonical/sunbeam-watchtower/internal/core/service/artifactdiscovery"
 )
 
 // gitcacheTreeReader adapts gitcache's free functions to the discovery

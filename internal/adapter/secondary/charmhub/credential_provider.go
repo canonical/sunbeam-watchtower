@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/core/port"
+	"github.com/canonical/sunbeam-watchtower/internal/core/port"
 )
 
 // CredentialProvider serves the current Charmhub publisher token to

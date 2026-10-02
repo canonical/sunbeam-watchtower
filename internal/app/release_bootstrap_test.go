@@ -12,8 +12,8 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 func TestTrackedReleases(t *testing.T) {

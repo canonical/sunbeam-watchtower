@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
-	lp "github.com/gboutry/sunbeam-watchtower/pkg/launchpad/v1"
+	lp "github.com/canonical/sunbeam-watchtower/pkg/launchpad/v1"
 	"go.etcd.io/bbolt"
 )
 

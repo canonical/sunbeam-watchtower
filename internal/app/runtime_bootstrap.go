@@ -7,15 +7,15 @@ import (
 	"os"
 	"time"
 
-	chadapter "github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/charmhub"
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/credentials"
-	ghadapter "github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/githubauth"
-	lpadapter "github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/launchpad"
-	ssadapter "github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/snapstore"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/port"
-	authsvc "github.com/gboutry/sunbeam-watchtower/internal/core/service/auth"
-	opsvc "github.com/gboutry/sunbeam-watchtower/internal/core/service/operation"
-	lp "github.com/gboutry/sunbeam-watchtower/pkg/launchpad/v1"
+	chadapter "github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/charmhub"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/credentials"
+	ghadapter "github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/githubauth"
+	lpadapter "github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/launchpad"
+	ssadapter "github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/snapstore"
+	"github.com/canonical/sunbeam-watchtower/internal/core/port"
+	authsvc "github.com/canonical/sunbeam-watchtower/internal/core/service/auth"
+	opsvc "github.com/canonical/sunbeam-watchtower/internal/core/service/operation"
+	lp "github.com/canonical/sunbeam-watchtower/pkg/launchpad/v1"
 )
 
 func (a *App) stateDir() (string, error) {

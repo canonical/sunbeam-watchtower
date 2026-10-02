@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	gh "github.com/gboutry/sunbeam-watchtower/pkg/github/v1"
+	gh "github.com/canonical/sunbeam-watchtower/pkg/github/v1"
 )
 
 // MemoryGitHubFlowStore stores pending GitHub auth flows in memory.

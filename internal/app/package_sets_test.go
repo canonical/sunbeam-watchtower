@@ -11,7 +11,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
 )
 
 func TestPackageSetReadsCachedLaunchpadMembership(t *testing.T) {

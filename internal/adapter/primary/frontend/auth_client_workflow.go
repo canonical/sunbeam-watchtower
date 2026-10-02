@@ -8,8 +8,8 @@ import (
 	"errors"
 	"net/url"
 
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
-	sa "github.com/gboutry/sunbeam-watchtower/pkg/storeauth/v1"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
+	sa "github.com/canonical/sunbeam-watchtower/pkg/storeauth/v1"
 )
 
 // LaunchpadAuthorizationHandler handles the user-facing authorization step between begin and finalize.

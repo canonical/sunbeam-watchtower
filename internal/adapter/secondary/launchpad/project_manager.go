@@ -7,8 +7,8 @@ import (
 	"context"
 	"fmt"
 
-	forge "github.com/gboutry/sunbeam-watchtower/pkg/forge/v1"
-	lp "github.com/gboutry/sunbeam-watchtower/pkg/launchpad/v1"
+	forge "github.com/canonical/sunbeam-watchtower/pkg/forge/v1"
+	lp "github.com/canonical/sunbeam-watchtower/pkg/launchpad/v1"
 )
 
 // ProjectManager implements port.ProjectManager using the Launchpad API.

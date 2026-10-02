@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gboutry/sunbeam-watchtower/tools/archtest"
+	"github.com/canonical/sunbeam-watchtower/tools/archtest"
 )
 
-const frontendClientImportPath = "github.com/gboutry/sunbeam-watchtower/pkg/client"
+const frontendClientImportPath = "github.com/canonical/sunbeam-watchtower/pkg/client"
 
 func TestExportedFrontendAPIsDoNotExposePkgClientTypes(t *testing.T) {
 	files, err := archtest.LoadGoFiles("*.go", map[string]bool{"transport.go": true})

@@ -6,9 +6,9 @@ package app
 import (
 	"log/slog"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/authflowstore"
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/operationstore"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/port"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/authflowstore"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/operationstore"
+	"github.com/canonical/sunbeam-watchtower/internal/core/port"
 )
 
 func newLaunchpadPendingAuthFlowStore(

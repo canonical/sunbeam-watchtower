@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/testsupport"
+	"github.com/canonical/sunbeam-watchtower/internal/testsupport"
 )
 
 func TestNewSnapStoreStore_DefaultPath(t *testing.T) {

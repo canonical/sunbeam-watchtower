@@ -7,8 +7,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/authflowstore"
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/operationstore"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/authflowstore"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/operationstore"
 )
 
 func TestNewLaunchpadPendingAuthFlowStoreUsesMemoryInEphemeralMode(t *testing.T) {

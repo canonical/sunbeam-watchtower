@@ -6,8 +6,8 @@ package commit
 import (
 	"context"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/core/port"
-	forge "github.com/gboutry/sunbeam-watchtower/pkg/forge/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/core/port"
+	forge "github.com/canonical/sunbeam-watchtower/pkg/forge/v1"
 )
 
 // Ensure implementations satisfy CommitSource.

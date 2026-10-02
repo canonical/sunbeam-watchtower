@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/core/port"
+	"github.com/canonical/sunbeam-watchtower/internal/core/port"
 )
 
 // ErrUnauthorized signals that Charmhub rejected the request because the

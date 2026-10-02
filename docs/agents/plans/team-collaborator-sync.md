@@ -248,7 +248,7 @@ package port
 import (
 	"context"
 
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 // StoreCollaboratorManager manages collaborators on a backing store artifact.
@@ -297,7 +297,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 func TestDiscoverTargets_SnapAtRoot(t *testing.T) {
@@ -404,7 +404,7 @@ import (
 	"os"
 	"path/filepath"
 
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 	"gopkg.in/yaml.v3"
 )
 
@@ -499,8 +499,8 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/core/port"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/core/port"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 var _ port.StoreCollaboratorManager = (*fakeStoreManager)(nil)
@@ -732,8 +732,8 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/core/port"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/core/port"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 // Service coordinates team collaborator synchronization.

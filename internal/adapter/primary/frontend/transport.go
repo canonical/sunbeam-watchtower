@@ -3,7 +3,7 @@
 
 package frontend
 
-import "github.com/gboutry/sunbeam-watchtower/pkg/client"
+import "github.com/canonical/sunbeam-watchtower/pkg/client"
 
 // ClientTransport wraps the reusable API client behind one frontend transport value.
 type ClientTransport struct {

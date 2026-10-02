@@ -18,11 +18,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/api"
-	frontend "github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/frontend"
-	"github.com/gboutry/sunbeam-watchtower/internal/app"
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
-	"github.com/gboutry/sunbeam-watchtower/pkg/client"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/primary/api"
+	frontend "github.com/canonical/sunbeam-watchtower/internal/adapter/primary/frontend"
+	"github.com/canonical/sunbeam-watchtower/internal/app"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
+	"github.com/canonical/sunbeam-watchtower/pkg/client"
 )
 
 // TargetKind identifies how one frontend session reaches the API.

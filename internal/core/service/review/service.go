@@ -8,8 +8,8 @@ import (
 	"sort"
 	"time"
 
-	port "github.com/gboutry/sunbeam-watchtower/internal/core/port"
-	forge "github.com/gboutry/sunbeam-watchtower/pkg/forge/v1"
+	port "github.com/canonical/sunbeam-watchtower/internal/core/port"
+	forge "github.com/canonical/sunbeam-watchtower/pkg/forge/v1"
 )
 
 // ProjectForge pairs a Forge client with the project identifier it expects.

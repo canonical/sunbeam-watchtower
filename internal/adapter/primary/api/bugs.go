@@ -8,12 +8,12 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	frontend "github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/frontend"
-	"github.com/gboutry/sunbeam-watchtower/internal/app"
-	bugsvc "github.com/gboutry/sunbeam-watchtower/internal/core/service/bug"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/service/bugsearch"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
-	forge "github.com/gboutry/sunbeam-watchtower/pkg/forge/v1"
+	frontend "github.com/canonical/sunbeam-watchtower/internal/adapter/primary/frontend"
+	"github.com/canonical/sunbeam-watchtower/internal/app"
+	bugsvc "github.com/canonical/sunbeam-watchtower/internal/core/service/bug"
+	"github.com/canonical/sunbeam-watchtower/internal/core/service/bugsearch"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
+	forge "github.com/canonical/sunbeam-watchtower/pkg/forge/v1"
 )
 
 // --- List bugs ---

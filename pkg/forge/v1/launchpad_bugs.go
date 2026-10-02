@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	lp "github.com/gboutry/sunbeam-watchtower/pkg/launchpad/v1"
+	lp "github.com/canonical/sunbeam-watchtower/pkg/launchpad/v1"
 )
 
 // LaunchpadBugTracker implements BugTracker for Launchpad projects.

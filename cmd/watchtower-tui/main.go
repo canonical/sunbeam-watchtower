@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/tui"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/primary/tui"
 )
 
 func main() {

@@ -48,85 +48,85 @@ linters:
             - "**/cmd/watchtower/*.go"
           list-mode: lax
           deny:
-            - pkg: github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary
+            - pkg: github.com/canonical/sunbeam-watchtower/internal/adapter/secondary
               desc: cmd/watchtower must enter through primary adapters, not secondary adapters
-            - pkg: github.com/gboutry/sunbeam-watchtower/internal/core
+            - pkg: github.com/canonical/sunbeam-watchtower/internal/core
               desc: cmd/watchtower must not bypass primary adapters
-            - pkg: github.com/gboutry/sunbeam-watchtower/internal/app
+            - pkg: github.com/canonical/sunbeam-watchtower/internal/app
               desc: cmd/watchtower should stay thin and call the CLI adapter
         primary-api-boundaries:
           files:
             - "**/internal/adapter/primary/api/*.go"
           list-mode: lax
           deny:
-            - pkg: github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary
+            - pkg: github.com/canonical/sunbeam-watchtower/internal/adapter/secondary
               desc: primary API adapters must go through app wiring and core services, not secondary adapters
         primary-cli-boundaries:
           files:
             - "**/internal/adapter/primary/cli/*.go"
           list-mode: lax
           deny:
-            - pkg: github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary
+            - pkg: github.com/canonical/sunbeam-watchtower/internal/adapter/secondary
               desc: primary CLI adapters must not talk to secondary adapters directly
-            - pkg: github.com/gboutry/sunbeam-watchtower/internal/core/service
+            - pkg: github.com/canonical/sunbeam-watchtower/internal/core/service
               desc: primary CLI adapters must go through the HTTP client or app wiring, not services directly
         app-boundaries:
           files:
             - "**/internal/app/*.go"
           list-mode: lax
           deny:
-            - pkg: github.com/gboutry/sunbeam-watchtower/internal/adapter/primary
+            - pkg: github.com/canonical/sunbeam-watchtower/internal/adapter/primary
               desc: app wiring must not depend on primary adapters
         config-boundaries:
           files:
             - "**/internal/config/*.go"
           list-mode: lax
           deny:
-            - pkg: github.com/gboutry/sunbeam-watchtower/internal/
+            - pkg: github.com/canonical/sunbeam-watchtower/internal/
               desc: config must stay independent from application layers
         core-port-boundaries:
           files:
             - "**/internal/core/port/*.go"
           list-mode: lax
           deny:
-            - pkg: github.com/gboutry/sunbeam-watchtower/internal/adapter
+            - pkg: github.com/canonical/sunbeam-watchtower/internal/adapter
               desc: core ports must not depend on adapters
-            - pkg: github.com/gboutry/sunbeam-watchtower/internal/app
+            - pkg: github.com/canonical/sunbeam-watchtower/internal/app
               desc: core ports must not depend on app wiring
-            - pkg: github.com/gboutry/sunbeam-watchtower/internal/config
+            - pkg: github.com/canonical/sunbeam-watchtower/internal/config
               desc: core ports must not depend on config
-            - pkg: github.com/gboutry/sunbeam-watchtower/internal/core/service
+            - pkg: github.com/canonical/sunbeam-watchtower/internal/core/service
               desc: core ports must not depend on service implementations
         core-service-boundaries:
           files:
             - "**/internal/core/service/**/*.go"
           list-mode: lax
           deny:
-            - pkg: github.com/gboutry/sunbeam-watchtower/internal/adapter
+            - pkg: github.com/canonical/sunbeam-watchtower/internal/adapter
               desc: core services must depend on ports or public pkg packages, not adapters
-            - pkg: github.com/gboutry/sunbeam-watchtower/internal/app
+            - pkg: github.com/canonical/sunbeam-watchtower/internal/app
               desc: core services must not depend on app wiring
-            - pkg: github.com/gboutry/sunbeam-watchtower/internal/config
+            - pkg: github.com/canonical/sunbeam-watchtower/internal/config
               desc: core services must not depend on config types
         secondary-boundaries:
           files:
             - "**/internal/adapter/secondary/**/*.go"
           list-mode: lax
           deny:
-            - pkg: github.com/gboutry/sunbeam-watchtower/internal/adapter/primary
+            - pkg: github.com/canonical/sunbeam-watchtower/internal/adapter/primary
               desc: secondary adapters must not depend on primary adapters
-            - pkg: github.com/gboutry/sunbeam-watchtower/internal/app
+            - pkg: github.com/canonical/sunbeam-watchtower/internal/app
               desc: secondary adapters must not depend on app wiring
-            - pkg: github.com/gboutry/sunbeam-watchtower/internal/core/service
+            - pkg: github.com/canonical/sunbeam-watchtower/internal/core/service
               desc: secondary adapters must implement ports, not depend on services
         pkg-boundaries:
           files:
             - "**/pkg/**/*.go"
           list-mode: lax
           deny:
-            - pkg: github.com/gboutry/sunbeam-watchtower/internal/
+            - pkg: github.com/canonical/sunbeam-watchtower/internal/
               desc: public pkg packages must stay independent from internal code
-            - pkg: github.com/gboutry/sunbeam-watchtower/cmd/
+            - pkg: github.com/canonical/sunbeam-watchtower/cmd/
               desc: public pkg packages must stay independent from entrypoints
   exclusions:
     presets:

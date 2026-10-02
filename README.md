@@ -7,13 +7,13 @@ Watchtower is moving toward a server-first runtime model. A persistent Watchtowe
 ## Installation
 
 ```bash
-go install github.com/gboutry/sunbeam-watchtower/cmd/watchtower@latest
+go install github.com/canonical/sunbeam-watchtower/cmd/watchtower@latest
 ```
 
 Or build from source:
 
 ```bash
-git clone https://github.com/gboutry/sunbeam-watchtower.git
+git clone https://github.com/canonical/sunbeam-watchtower.git
 cd sunbeam-watchtower
 go build -o watchtower ./cmd/watchtower
 ```

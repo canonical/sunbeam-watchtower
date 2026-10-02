@@ -9,12 +9,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/charmhub"
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/snapstore"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/port"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/service/teamsync"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
-	lp "github.com/gboutry/sunbeam-watchtower/pkg/launchpad/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/charmhub"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/snapstore"
+	"github.com/canonical/sunbeam-watchtower/internal/core/port"
+	"github.com/canonical/sunbeam-watchtower/internal/core/service/teamsync"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
+	lp "github.com/canonical/sunbeam-watchtower/pkg/launchpad/v1"
 	"gopkg.in/yaml.v3"
 )
 

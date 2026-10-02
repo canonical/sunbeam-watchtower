@@ -17,7 +17,7 @@ import (
 
 	"github.com/google/go-github/v68/github"
 
-	gh "github.com/gboutry/sunbeam-watchtower/pkg/github/v1"
+	gh "github.com/canonical/sunbeam-watchtower/pkg/github/v1"
 )
 
 const (

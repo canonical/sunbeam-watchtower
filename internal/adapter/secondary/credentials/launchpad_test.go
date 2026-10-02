@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/testsupport"
-	lp "github.com/gboutry/sunbeam-watchtower/pkg/launchpad/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/testsupport"
+	lp "github.com/canonical/sunbeam-watchtower/pkg/launchpad/v1"
 )
 
 func TestNewLaunchpadStore_DefaultPath(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 // ErrCollaboratorsUnsupported signals that a store backend does not support

@@ -13,7 +13,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	sa "github.com/gboutry/sunbeam-watchtower/pkg/storeauth/v1"
+	sa "github.com/canonical/sunbeam-watchtower/pkg/storeauth/v1"
 	"gopkg.in/macaroon.v2"
 )
 

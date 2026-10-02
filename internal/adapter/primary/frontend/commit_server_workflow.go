@@ -6,8 +6,8 @@ package frontend
 import (
 	"context"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/app"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/service/commit"
+	"github.com/canonical/sunbeam-watchtower/internal/app"
+	"github.com/canonical/sunbeam-watchtower/internal/core/service/commit"
 )
 
 // CommitServerWorkflow exposes reusable server-side commit workflows for the HTTP API.

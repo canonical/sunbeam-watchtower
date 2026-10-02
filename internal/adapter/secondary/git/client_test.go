@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	adapter "github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/git"
+	adapter "github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/git"
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )

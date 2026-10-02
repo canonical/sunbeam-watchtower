@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	frontend "github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/frontend"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
-	forge "github.com/gboutry/sunbeam-watchtower/pkg/forge/v1"
+	frontend "github.com/canonical/sunbeam-watchtower/internal/adapter/primary/frontend"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
+	forge "github.com/canonical/sunbeam-watchtower/pkg/forge/v1"
 	"gopkg.in/yaml.v3"
 )
 

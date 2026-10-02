@@ -6,8 +6,8 @@ package frontend
 import (
 	"testing"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/app"
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
+	"github.com/canonical/sunbeam-watchtower/internal/app"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
 )
 
 func TestNewServerFacadeProvidesWorkflows(t *testing.T) {

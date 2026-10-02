@@ -6,7 +6,7 @@ package client
 import (
 	"context"
 
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 // TeamSyncOptions holds the request body for syncing team collaborators.

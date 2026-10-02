@@ -4,7 +4,7 @@
 package build
 
 import (
-	"github.com/gboutry/sunbeam-watchtower/internal/core/port"
+	"github.com/canonical/sunbeam-watchtower/internal/core/port"
 )
 
 // ProjectBuilder groups a RecipeBuilder with its project-level metadata.

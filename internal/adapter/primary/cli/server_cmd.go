@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	frontend "github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/frontend"
+	frontend "github.com/canonical/sunbeam-watchtower/internal/adapter/primary/frontend"
 	"github.com/spf13/cobra"
 )
 

@@ -11,8 +11,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/packagesetcache"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/packagesetcache"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 var ErrUnknownPackageSet = errors.New("unknown package set")

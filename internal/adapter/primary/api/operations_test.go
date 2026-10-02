@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
-	opsvc "github.com/gboutry/sunbeam-watchtower/internal/core/service/operation"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
+	opsvc "github.com/canonical/sunbeam-watchtower/internal/core/service/operation"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 func TestProjectsSyncAsync_EmptyConfigCreatesOperation(t *testing.T) {

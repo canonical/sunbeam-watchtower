@@ -10,7 +10,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	lp "github.com/gboutry/sunbeam-watchtower/pkg/launchpad/v1"
+	lp "github.com/canonical/sunbeam-watchtower/pkg/launchpad/v1"
 )
 
 func newLaunchpadTestServer(t *testing.T, mux *http.ServeMux) (*LaunchpadForge, *httptest.Server) {

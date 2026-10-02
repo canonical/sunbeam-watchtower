@@ -6,8 +6,8 @@ package cli
 import (
 	"errors"
 
-	frontend "github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/frontend"
-	runtimeadapter "github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/runtime"
+	frontend "github.com/canonical/sunbeam-watchtower/internal/adapter/primary/frontend"
+	runtimeadapter "github.com/canonical/sunbeam-watchtower/internal/adapter/primary/runtime"
 	"github.com/spf13/cobra"
 )
 

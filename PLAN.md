@@ -59,6 +59,7 @@ Watchtower has a working baseline across the main domains:
 - **Config** — live reload via fsnotify, SIGHUP, and `POST /api/v1/config/reload` for per-request services (`sync.Once` services require restart); minimal client config via `ConfigResolver` with server token auth middleware; the snap bundles the repository configuration and selects it through `WATCHTOWER_CONFIG` by default
 - **TUI** — tabs for Dashboard, Builds, Releases, Packages, Bugs, Reviews, Commits, Projects, SRUs, plus meta surfaces (auth, operations, cache, logs, server, shortcuts); read-only workflow tabs with centered scrollable modal forms, multi-select with vim-range motions, dense list rows; unified bug list/search with match evidence; build retry/cancel/cleanup; cache and project/bug sync from meta overlays; startup presets via `watchtower.yaml`
 - **Telemetry** — cache-first OpenTelemetry confined to `internal/adapter/secondary/otel`
+- **Repository** — hosted at `github.com/canonical/sunbeam-watchtower`; the Go module, imports, architecture checks, lint rules, documentation, and build examples use the Canonical namespace, while existing copyright attribution is preserved
 
 ## Current Gaps
 

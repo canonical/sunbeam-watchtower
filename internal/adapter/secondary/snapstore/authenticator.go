@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	sa "github.com/gboutry/sunbeam-watchtower/pkg/storeauth/v1"
+	sa "github.com/canonical/sunbeam-watchtower/pkg/storeauth/v1"
 )
 
 const (

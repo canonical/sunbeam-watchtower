@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 func TestMemoryStoreRoundTrip(t *testing.T) {

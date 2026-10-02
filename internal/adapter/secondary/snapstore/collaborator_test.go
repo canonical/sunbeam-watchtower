@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/core/port"
+	"github.com/canonical/sunbeam-watchtower/internal/core/port"
 )
 
 func TestCollaboratorManager_ListCollaborators_Unsupported(t *testing.T) {

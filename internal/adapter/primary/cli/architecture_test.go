@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gboutry/sunbeam-watchtower/tools/archtest"
+	"github.com/canonical/sunbeam-watchtower/tools/archtest"
 )
 
-const clientImportPath = "github.com/gboutry/sunbeam-watchtower/pkg/client"
+const clientImportPath = "github.com/canonical/sunbeam-watchtower/pkg/client"
 
 var cliBootstrapFiles = map[string]bool{
 	"root.go":    true,

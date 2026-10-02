@@ -6,9 +6,9 @@ package frontend
 import (
 	"context"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/app"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/service/review"
-	forge "github.com/gboutry/sunbeam-watchtower/pkg/forge/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/app"
+	"github.com/canonical/sunbeam-watchtower/internal/core/service/review"
+	forge "github.com/canonical/sunbeam-watchtower/pkg/forge/v1"
 )
 
 // ReviewServerWorkflow exposes reusable server-side review workflows for the HTTP API.

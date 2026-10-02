@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	lp "github.com/gboutry/sunbeam-watchtower/pkg/launchpad/v1"
+	lp "github.com/canonical/sunbeam-watchtower/pkg/launchpad/v1"
 )
 
 // LaunchpadForge implements Forge for Launchpad repositories.

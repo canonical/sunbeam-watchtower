@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	lpadapter "github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/launchpad"
-	projectsvc "github.com/gboutry/sunbeam-watchtower/internal/core/service/project"
+	lpadapter "github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/launchpad"
+	projectsvc "github.com/canonical/sunbeam-watchtower/internal/core/service/project"
 )
 
 // BuildProjectSyncConfigs resolves project sync configuration from the loaded config.

@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/core/port"
-	forge "github.com/gboutry/sunbeam-watchtower/pkg/forge/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/core/port"
+	forge "github.com/canonical/sunbeam-watchtower/pkg/forge/v1"
 )
 
 // CachedBugTracker decorates a port.BugTracker with local cache support.

@@ -14,14 +14,14 @@ import (
 	"github.com/andygrunwald/go-gerrit"
 	"github.com/google/go-github/v68/github"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/bugcache"
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/reviewcache"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/port"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/service/bug"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/service/review"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
-	forge "github.com/gboutry/sunbeam-watchtower/pkg/forge/v1"
-	lp "github.com/gboutry/sunbeam-watchtower/pkg/launchpad/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/bugcache"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/reviewcache"
+	"github.com/canonical/sunbeam-watchtower/internal/core/port"
+	"github.com/canonical/sunbeam-watchtower/internal/core/service/bug"
+	"github.com/canonical/sunbeam-watchtower/internal/core/service/review"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
+	forge "github.com/canonical/sunbeam-watchtower/pkg/forge/v1"
+	lp "github.com/canonical/sunbeam-watchtower/pkg/launchpad/v1"
 )
 
 // ReviewCacheSyncResult reports the result of one review-cache refresh.

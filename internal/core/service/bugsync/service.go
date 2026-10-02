@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/core/port"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
-	forge "github.com/gboutry/sunbeam-watchtower/pkg/forge/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/core/port"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
+	forge "github.com/canonical/sunbeam-watchtower/pkg/forge/v1"
 )
 
 // ActionType describes the kind of sync action.

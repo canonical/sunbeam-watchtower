@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	oteladapter "github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/otel"
+	oteladapter "github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/otel"
 )
 
 func (a *App) upstreamHTTPClient(upstream string, timeout time.Duration) *http.Client {

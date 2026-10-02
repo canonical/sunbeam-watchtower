@@ -10,8 +10,8 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/core/port"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/core/port"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 // TeamCollaboratorSyncer reconciles the members of a Launchpad team against

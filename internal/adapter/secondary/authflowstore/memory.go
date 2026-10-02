@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	lp "github.com/gboutry/sunbeam-watchtower/pkg/launchpad/v1"
+	lp "github.com/canonical/sunbeam-watchtower/pkg/launchpad/v1"
 )
 
 // MemoryLaunchpadFlowStore stores pending Launchpad auth flows in memory.

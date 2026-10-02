@@ -1,4 +1,4 @@
-module github.com/gboutry/sunbeam-watchtower
+module github.com/canonical/sunbeam-watchtower
 
 go 1.25.0
 

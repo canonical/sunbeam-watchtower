@@ -794,7 +794,7 @@ package frontend
 import (
 	"testing"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
 )
 
 func TestDTOToConfig_RoundTrip(t *testing.T) {
@@ -867,8 +867,8 @@ Create `internal/adapter/primary/frontend/config_dto_convert.go`:
 package frontend
 
 import (
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 // DTOToConfig converts a public DTO config to the internal config type.
@@ -1112,9 +1112,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
-	"github.com/gboutry/sunbeam-watchtower/pkg/client"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
+	"github.com/canonical/sunbeam-watchtower/pkg/client"
 )
 
 func TestConfigResolver_LocalOnly(t *testing.T) {
@@ -1239,9 +1239,9 @@ import (
 	"errors"
 	"sync"
 
-	frontend "github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/frontend"
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
-	"github.com/gboutry/sunbeam-watchtower/pkg/client"
+	frontend "github.com/canonical/sunbeam-watchtower/internal/adapter/primary/frontend"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
+	"github.com/canonical/sunbeam-watchtower/pkg/client"
 )
 
 // ConfigResolver resolves configuration from a local file, a remote server,

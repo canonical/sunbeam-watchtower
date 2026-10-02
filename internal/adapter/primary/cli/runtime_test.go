@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/api"
-	runtimeadapter "github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/runtime"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/primary/api"
+	runtimeadapter "github.com/canonical/sunbeam-watchtower/internal/adapter/primary/runtime"
 	"github.com/spf13/cobra"
 )
 

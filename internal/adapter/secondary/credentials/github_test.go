@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/testsupport"
-	gh "github.com/gboutry/sunbeam-watchtower/pkg/github/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/testsupport"
+	gh "github.com/canonical/sunbeam-watchtower/pkg/github/v1"
 )
 
 func TestNewGitHubStore_DefaultPath(t *testing.T) {

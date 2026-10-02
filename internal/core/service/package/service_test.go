@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 
-	distro "github.com/gboutry/sunbeam-watchtower/pkg/distro/v1"
+	distro "github.com/canonical/sunbeam-watchtower/pkg/distro/v1"
 )
 
 // mockCache implements port.DistroCache for testing.

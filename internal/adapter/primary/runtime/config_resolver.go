@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"sync"
 
-	frontend "github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/frontend"
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
-	"github.com/gboutry/sunbeam-watchtower/pkg/client"
+	frontend "github.com/canonical/sunbeam-watchtower/internal/adapter/primary/frontend"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
+	"github.com/canonical/sunbeam-watchtower/pkg/client"
 )
 
 // ConfigResolver lazily resolves configuration from a local file, a remote

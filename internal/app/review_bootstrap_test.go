@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
-	forge "github.com/gboutry/sunbeam-watchtower/pkg/forge/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
+	forge "github.com/canonical/sunbeam-watchtower/pkg/forge/v1"
 )
 
 func TestBuildBugTrackersCreatesLaunchpadTrackerWithoutStoredAuth(t *testing.T) {

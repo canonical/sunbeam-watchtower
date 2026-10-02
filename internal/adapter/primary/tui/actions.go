@@ -4,9 +4,9 @@
 package tui
 
 import (
+	frontend "github.com/canonical/sunbeam-watchtower/internal/adapter/primary/frontend"
+	runtimeadapter "github.com/canonical/sunbeam-watchtower/internal/adapter/primary/runtime"
 	tea "github.com/charmbracelet/bubbletea"
-	frontend "github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/frontend"
-	runtimeadapter "github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/runtime"
 )
 
 type actionDeniedMsg struct {

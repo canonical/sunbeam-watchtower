@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
-	gh "github.com/gboutry/sunbeam-watchtower/pkg/github/v1"
+	gh "github.com/canonical/sunbeam-watchtower/pkg/github/v1"
 	"go.etcd.io/bbolt"
 )
 

@@ -10,14 +10,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/app"
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/port"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/service/bug"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/service/bugsearch"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/service/bugsync"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
-	forge "github.com/gboutry/sunbeam-watchtower/pkg/forge/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/app"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
+	"github.com/canonical/sunbeam-watchtower/internal/core/port"
+	"github.com/canonical/sunbeam-watchtower/internal/core/service/bug"
+	"github.com/canonical/sunbeam-watchtower/internal/core/service/bugsearch"
+	"github.com/canonical/sunbeam-watchtower/internal/core/service/bugsync"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
+	forge "github.com/canonical/sunbeam-watchtower/pkg/forge/v1"
 )
 
 // BugServerWorkflow exposes reusable server-side bug workflows for the HTTP API.

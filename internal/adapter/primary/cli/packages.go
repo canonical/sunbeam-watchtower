@@ -9,9 +9,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/frontend"
-	distro "github.com/gboutry/sunbeam-watchtower/pkg/distro/v1"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/primary/frontend"
+	distro "github.com/canonical/sunbeam-watchtower/pkg/distro/v1"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 	"github.com/spf13/cobra"
 )
 

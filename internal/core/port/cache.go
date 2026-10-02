@@ -6,8 +6,8 @@ package port
 import (
 	"context"
 
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
-	forge "github.com/gboutry/sunbeam-watchtower/pkg/forge/v1"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
+	forge "github.com/canonical/sunbeam-watchtower/pkg/forge/v1"
 )
 
 // RepoEnsurer materialises a local bare clone of a remote repository.

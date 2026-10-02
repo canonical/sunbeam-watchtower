@@ -13,14 +13,14 @@ import (
 	"strings"
 	"time"
 
-	oteladapter "github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/otel"
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
-	bugsvc "github.com/gboutry/sunbeam-watchtower/internal/core/service/bug"
-	buildsvc "github.com/gboutry/sunbeam-watchtower/internal/core/service/build"
-	commitsvc "github.com/gboutry/sunbeam-watchtower/internal/core/service/commit"
-	pkgsvc "github.com/gboutry/sunbeam-watchtower/internal/core/service/package"
-	reviewsvc "github.com/gboutry/sunbeam-watchtower/internal/core/service/review"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	oteladapter "github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/otel"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
+	bugsvc "github.com/canonical/sunbeam-watchtower/internal/core/service/bug"
+	buildsvc "github.com/canonical/sunbeam-watchtower/internal/core/service/build"
+	commitsvc "github.com/canonical/sunbeam-watchtower/internal/core/service/commit"
+	pkgsvc "github.com/canonical/sunbeam-watchtower/internal/core/service/package"
+	reviewsvc "github.com/canonical/sunbeam-watchtower/internal/core/service/review"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 func (a *App) Telemetry(ctx context.Context) (*oteladapter.Telemetry, error) {

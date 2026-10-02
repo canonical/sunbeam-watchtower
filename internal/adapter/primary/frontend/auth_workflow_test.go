@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/core/port"
-	authsvc "github.com/gboutry/sunbeam-watchtower/internal/core/service/auth"
-	lp "github.com/gboutry/sunbeam-watchtower/pkg/launchpad/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/core/port"
+	authsvc "github.com/canonical/sunbeam-watchtower/internal/core/service/auth"
+	lp "github.com/canonical/sunbeam-watchtower/pkg/launchpad/v1"
 )
 
 func TestAuthWorkflowStatus(t *testing.T) {

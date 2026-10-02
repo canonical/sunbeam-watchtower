@@ -34,7 +34,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
 )
 
 type Telemetry struct {

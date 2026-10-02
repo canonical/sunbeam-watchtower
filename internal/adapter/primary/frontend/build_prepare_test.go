@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/app"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/service/build"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/app"
+	"github.com/canonical/sunbeam-watchtower/internal/core/service/build"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 type fakeGitClient struct {

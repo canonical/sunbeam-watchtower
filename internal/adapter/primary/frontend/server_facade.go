@@ -3,7 +3,7 @@
 
 package frontend
 
-import "github.com/gboutry/sunbeam-watchtower/internal/app"
+import "github.com/canonical/sunbeam-watchtower/internal/app"
 
 // ServerFacade exposes reusable server-side frontend workflows behind one stable entrypoint.
 type ServerFacade struct {

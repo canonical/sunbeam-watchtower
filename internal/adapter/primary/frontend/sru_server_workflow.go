@@ -6,8 +6,8 @@ package frontend
 import (
 	"context"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/app"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/app"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 // SRUServerWorkflow exposes read-only monitoring and explicit local refresh.

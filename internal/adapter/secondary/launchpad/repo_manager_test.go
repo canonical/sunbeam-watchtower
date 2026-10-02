@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	lp "github.com/gboutry/sunbeam-watchtower/pkg/launchpad/v1"
+	lp "github.com/canonical/sunbeam-watchtower/pkg/launchpad/v1"
 )
 
 type repoRoundTripFunc func(*http.Request) (*http.Response, error)

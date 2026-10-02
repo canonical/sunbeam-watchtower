@@ -11,9 +11,9 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	frontend "github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/frontend"
-	"github.com/gboutry/sunbeam-watchtower/internal/app"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	frontend "github.com/canonical/sunbeam-watchtower/internal/adapter/primary/frontend"
+	"github.com/canonical/sunbeam-watchtower/internal/app"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 // TeamSyncInput holds the request body for syncing team collaborators.

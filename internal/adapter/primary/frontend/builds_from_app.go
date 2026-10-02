@@ -6,7 +6,7 @@ package frontend
 import (
 	"fmt"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/app"
+	"github.com/canonical/sunbeam-watchtower/internal/app"
 )
 
 // NewLocalBuildPreparerFromApp wires a local build preparer from application services.

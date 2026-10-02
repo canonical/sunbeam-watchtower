@@ -10,11 +10,11 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/bugcache"
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/openstack"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/port"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/service/commit"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/bugcache"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/openstack"
+	"github.com/canonical/sunbeam-watchtower/internal/core/port"
+	"github.com/canonical/sunbeam-watchtower/internal/core/service/commit"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 // UpstreamCacheDir returns the path to the upstream repos cache directory.

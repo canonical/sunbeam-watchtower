@@ -6,7 +6,7 @@ package dto
 import (
 	"time"
 
-	distro "github.com/gboutry/sunbeam-watchtower/pkg/distro/v1"
+	distro "github.com/canonical/sunbeam-watchtower/pkg/distro/v1"
 )
 
 // PackageSetCacheStatus describes one cached Launchpad packageset snapshot.

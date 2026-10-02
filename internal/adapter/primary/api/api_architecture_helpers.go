@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	frontend "github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/frontend"
-	forge "github.com/gboutry/sunbeam-watchtower/pkg/forge/v1"
+	frontend "github.com/canonical/sunbeam-watchtower/internal/adapter/primary/frontend"
+	forge "github.com/canonical/sunbeam-watchtower/pkg/forge/v1"
 )
 
 func isFrontendValidationError(err error) bool {

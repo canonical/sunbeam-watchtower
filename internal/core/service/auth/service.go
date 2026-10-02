@@ -13,10 +13,10 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/core/port"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
-	gh "github.com/gboutry/sunbeam-watchtower/pkg/github/v1"
-	lp "github.com/gboutry/sunbeam-watchtower/pkg/launchpad/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/core/port"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
+	gh "github.com/canonical/sunbeam-watchtower/pkg/github/v1"
+	lp "github.com/canonical/sunbeam-watchtower/pkg/launchpad/v1"
 )
 
 const (

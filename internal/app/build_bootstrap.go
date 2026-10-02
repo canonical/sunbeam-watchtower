@@ -6,10 +6,10 @@ package app
 import (
 	"time"
 
-	adaptergit "github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/git"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/port"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/service/build"
-	lp "github.com/gboutry/sunbeam-watchtower/pkg/launchpad/v1"
+	adaptergit "github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/git"
+	"github.com/canonical/sunbeam-watchtower/internal/core/port"
+	"github.com/canonical/sunbeam-watchtower/internal/core/service/build"
+	lp "github.com/canonical/sunbeam-watchtower/pkg/launchpad/v1"
 )
 
 // BuildRecipeBuilders creates per-project RecipeBuilder instances from config.

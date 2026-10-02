@@ -6,7 +6,7 @@ package frontend
 import (
 	"testing"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
 )
 
 func boolPtr(b bool) *bool { return &b }

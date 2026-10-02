@@ -15,7 +15,7 @@ import (
 	"path"
 	"sort"
 
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 	"gopkg.in/yaml.v3"
 )
 

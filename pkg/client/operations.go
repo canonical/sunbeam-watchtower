@@ -7,7 +7,7 @@ import (
 	"context"
 	"net/url"
 
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 // OperationsListResult is the response returned by OperationsList.

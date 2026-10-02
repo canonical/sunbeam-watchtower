@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	runtimeadapter "github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/runtime"
-	"github.com/gboutry/sunbeam-watchtower/internal/app"
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
+	runtimeadapter "github.com/canonical/sunbeam-watchtower/internal/adapter/primary/runtime"
+	"github.com/canonical/sunbeam-watchtower/internal/app"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
 )
 
 func TestOptionsFrontendUsesSessionFacade(t *testing.T) {

@@ -6,9 +6,9 @@ package frontend
 import (
 	"context"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/app"
-	opsvc "github.com/gboutry/sunbeam-watchtower/internal/core/service/operation"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/app"
+	opsvc "github.com/canonical/sunbeam-watchtower/internal/core/service/operation"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 // OperationWorkflow exposes frontend-facing long-running operation workflows.

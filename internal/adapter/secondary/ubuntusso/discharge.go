@@ -9,7 +9,7 @@ import (
 	"context"
 	"net/url"
 
-	sa "github.com/gboutry/sunbeam-watchtower/pkg/storeauth/v1"
+	sa "github.com/canonical/sunbeam-watchtower/pkg/storeauth/v1"
 )
 
 // DischargeAll delegates to sa.DischargeAll. See that function for documentation.

@@ -11,9 +11,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/core/port"
-	distro "github.com/gboutry/sunbeam-watchtower/pkg/distro/v1"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/core/port"
+	distro "github.com/canonical/sunbeam-watchtower/pkg/distro/v1"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 // ProjectSource associates a name (e.g. "ubuntu", "uca") with its source entries.

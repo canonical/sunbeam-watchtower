@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gboutry/sunbeam-watchtower/tools/archtest"
+	"github.com/canonical/sunbeam-watchtower/tools/archtest"
 )
 
-const tuiClientImportPath = "github.com/gboutry/sunbeam-watchtower/pkg/client"
+const tuiClientImportPath = "github.com/canonical/sunbeam-watchtower/pkg/client"
 
 var tuiBootstrapFiles = map[string]bool{
 	"app.go": true,

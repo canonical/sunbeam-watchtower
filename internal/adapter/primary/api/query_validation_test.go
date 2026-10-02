@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
 )
 
 func TestReviewsList_InvalidForgeReturns422(t *testing.T) {

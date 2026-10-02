@@ -7,8 +7,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/gboutry/sunbeam-watchtower/pkg/client"
-	forge "github.com/gboutry/sunbeam-watchtower/pkg/forge/v1"
+	"github.com/canonical/sunbeam-watchtower/pkg/client"
+	forge "github.com/canonical/sunbeam-watchtower/pkg/forge/v1"
 )
 
 // CommitLogRequest describes one commit-log workflow.

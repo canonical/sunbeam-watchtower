@@ -15,12 +15,12 @@ import (
 	"sync"
 	"time"
 
+	frontend "github.com/canonical/sunbeam-watchtower/internal/adapter/primary/frontend"
+	runtimeadapter "github.com/canonical/sunbeam-watchtower/internal/adapter/primary/runtime"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	frontend "github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/frontend"
-	runtimeadapter "github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/runtime"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
 )
 
 // cancelHolder stores a context.CancelFunc behind a pointer so it survives

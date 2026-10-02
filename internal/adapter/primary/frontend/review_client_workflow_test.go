@@ -10,8 +10,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gboutry/sunbeam-watchtower/pkg/client"
-	forge "github.com/gboutry/sunbeam-watchtower/pkg/forge/v1"
+	"github.com/canonical/sunbeam-watchtower/pkg/client"
+	forge "github.com/canonical/sunbeam-watchtower/pkg/forge/v1"
 )
 
 func TestReviewClientWorkflowList(t *testing.T) {

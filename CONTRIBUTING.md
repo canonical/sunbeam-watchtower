@@ -10,7 +10,7 @@
 ## Getting started
 
 ```bash
-git clone https://github.com/gboutry/sunbeam-watchtower.git
+git clone https://github.com/canonical/sunbeam-watchtower.git
 cd sunbeam-watchtower
 go build ./...
 go test ./...
@@ -130,7 +130,7 @@ Contributors should preserve this behavior: stateful workflows must prefer persi
 go build -o watchtower ./cmd/watchtower
 
 # Build with version info
-go build -ldflags "-X github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/cli.Version=v1.0.0" -o watchtower ./cmd/watchtower
+go build -ldflags "-X github.com/canonical/sunbeam-watchtower/internal/adapter/primary/cli.Version=v1.0.0" -o watchtower ./cmd/watchtower
 ```
 
 ## Running tests

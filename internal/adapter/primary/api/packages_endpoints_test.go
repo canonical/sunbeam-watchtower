@@ -11,10 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/app"
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
-	distro "github.com/gboutry/sunbeam-watchtower/pkg/distro/v1"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/app"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
+	distro "github.com/canonical/sunbeam-watchtower/pkg/distro/v1"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 func newEmptyPackagesApp(t *testing.T) *app.App {

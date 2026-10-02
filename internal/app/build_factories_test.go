@@ -8,10 +8,10 @@ import (
 	"log/slog"
 	"testing"
 
-	lpadapter "github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/launchpad"
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/service/build"
-	lp "github.com/gboutry/sunbeam-watchtower/pkg/launchpad/v1"
+	lpadapter "github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/launchpad"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
+	"github.com/canonical/sunbeam-watchtower/internal/core/service/build"
+	lp "github.com/canonical/sunbeam-watchtower/pkg/launchpad/v1"
 )
 
 func TestBuildRecipeBuildersFromConfigSelectsArtifactFactories(t *testing.T) {

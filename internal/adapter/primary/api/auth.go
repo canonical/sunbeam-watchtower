@@ -11,10 +11,10 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	frontend "github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/frontend"
-	"github.com/gboutry/sunbeam-watchtower/internal/app"
-	authsvc "github.com/gboutry/sunbeam-watchtower/internal/core/service/auth"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	frontend "github.com/canonical/sunbeam-watchtower/internal/adapter/primary/frontend"
+	"github.com/canonical/sunbeam-watchtower/internal/app"
+	authsvc "github.com/canonical/sunbeam-watchtower/internal/core/service/auth"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 // AuthStatusOutput is the response for the auth status endpoint.

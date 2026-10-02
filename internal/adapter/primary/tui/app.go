@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"io"
 
+	runtimeadapter "github.com/canonical/sunbeam-watchtower/internal/adapter/primary/runtime"
 	tea "github.com/charmbracelet/bubbletea"
-	runtimeadapter "github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/runtime"
 )
 
 // Version is set at build time via -ldflags.

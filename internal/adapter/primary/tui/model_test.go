@@ -15,14 +15,14 @@ import (
 	"time"
 	"unsafe"
 
+	frontend "github.com/canonical/sunbeam-watchtower/internal/adapter/primary/frontend"
+	runtimeadapter "github.com/canonical/sunbeam-watchtower/internal/adapter/primary/runtime"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
+	distro "github.com/canonical/sunbeam-watchtower/pkg/distro/v1"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
+	forge "github.com/canonical/sunbeam-watchtower/pkg/forge/v1"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	frontend "github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/frontend"
-	runtimeadapter "github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/runtime"
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
-	distro "github.com/gboutry/sunbeam-watchtower/pkg/distro/v1"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
-	forge "github.com/gboutry/sunbeam-watchtower/pkg/forge/v1"
 )
 
 func TestViewRendersAcrossWidths(t *testing.T) {

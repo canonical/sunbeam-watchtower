@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/bugcache"
-	forge "github.com/gboutry/sunbeam-watchtower/pkg/forge/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/bugcache"
+	forge "github.com/canonical/sunbeam-watchtower/pkg/forge/v1"
 )
 
 // mockBugTracker is a simple in-memory implementation for testing.

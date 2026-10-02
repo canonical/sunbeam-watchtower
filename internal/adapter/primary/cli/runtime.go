@@ -1,10 +1,10 @@
 package cli
 
 import (
-	frontend "github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/frontend"
+	frontend "github.com/canonical/sunbeam-watchtower/internal/adapter/primary/frontend"
 	"github.com/spf13/cobra"
 
-	runtimeadapter "github.com/gboutry/sunbeam-watchtower/internal/adapter/primary/runtime"
+	runtimeadapter "github.com/canonical/sunbeam-watchtower/internal/adapter/primary/runtime"
 )
 
 func commandNeedsConfig(cmd *cobra.Command) bool {

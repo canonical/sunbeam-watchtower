@@ -11,7 +11,7 @@ import (
 	"os"
 	"strings"
 
-	distro "github.com/gboutry/sunbeam-watchtower/pkg/distro/v1"
+	distro "github.com/canonical/sunbeam-watchtower/pkg/distro/v1"
 )
 
 // ParseSources reads an RFC822-format Sources file and yields SourcePackage entries.

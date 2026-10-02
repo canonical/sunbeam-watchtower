@@ -9,13 +9,13 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/bugcache"
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/distrocache"
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/excusescache"
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/gitcache"
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/reviewcache"
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/bugcache"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/distrocache"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/excusescache"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/gitcache"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/reviewcache"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 // ResolveCacheDir returns the cache directory for sunbeam-watchtower.

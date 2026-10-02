@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	sa "github.com/gboutry/sunbeam-watchtower/pkg/storeauth/v1"
+	sa "github.com/canonical/sunbeam-watchtower/pkg/storeauth/v1"
 )
 
 // MemoryStoreFlowStore stores pending store auth flows in memory.

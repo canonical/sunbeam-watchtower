@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	gh "github.com/gboutry/sunbeam-watchtower/pkg/github/v1"
+	gh "github.com/canonical/sunbeam-watchtower/pkg/github/v1"
 )
 
 func TestMemoryGitHubFlowStore_PutGetDeleteRoundTrip(t *testing.T) {

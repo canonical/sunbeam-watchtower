@@ -13,10 +13,10 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/app"
-	pkg "github.com/gboutry/sunbeam-watchtower/internal/core/service/package"
-	distro "github.com/gboutry/sunbeam-watchtower/pkg/distro/v1"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/app"
+	pkg "github.com/canonical/sunbeam-watchtower/internal/core/service/package"
+	distro "github.com/canonical/sunbeam-watchtower/pkg/distro/v1"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 // --- Request / Response types ------------------------------------------------

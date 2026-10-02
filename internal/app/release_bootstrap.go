@@ -9,11 +9,11 @@ import (
 	"sort"
 	"time"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/charmhub"
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/releasecache"
-	"github.com/gboutry/sunbeam-watchtower/internal/adapter/secondary/snapstore"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/port"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/charmhub"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/releasecache"
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/secondary/snapstore"
+	"github.com/canonical/sunbeam-watchtower/internal/core/port"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 // ReleaseCache returns a lazy-initialized release publication cache singleton.

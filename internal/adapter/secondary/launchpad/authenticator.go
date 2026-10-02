@@ -8,7 +8,7 @@ import (
 	"io"
 	"log/slog"
 
-	lp "github.com/gboutry/sunbeam-watchtower/pkg/launchpad/v1"
+	lp "github.com/canonical/sunbeam-watchtower/pkg/launchpad/v1"
 )
 
 // Authenticator bridges the core auth service to the Launchpad OAuth client.

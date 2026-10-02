@@ -503,7 +503,7 @@ func (m *mockRepoManager) DeleteGitRef(_ context.Context, _ string) error {
 
 Add import for `port` package at top of file:
 ```go
-"github.com/gboutry/sunbeam-watchtower/internal/core/port"
+"github.com/canonical/sunbeam-watchtower/internal/core/port"
 ```
 
 - [ ] **Step 6: Update fakeRepoManager in build_prepare_test.go**
@@ -519,7 +519,7 @@ func (f *fakeRepoManager) DeleteGitRef(context.Context, string) error {
 }
 ```
 
-Add import: `"github.com/gboutry/sunbeam-watchtower/internal/core/port"`
+Add import: `"github.com/canonical/sunbeam-watchtower/internal/core/port"`
 
 - [ ] **Step 7: Run all tests to verify everything compiles and passes**
 

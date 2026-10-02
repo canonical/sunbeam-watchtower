@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/core/service/artifactdiscovery"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/core/service/artifactdiscovery"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 // manifestName reads metadataPath and returns the declared artifact name via

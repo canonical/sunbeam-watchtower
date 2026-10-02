@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gboutry/sunbeam-watchtower/tools/archtest"
+	"github.com/canonical/sunbeam-watchtower/tools/archtest"
 )
 
 var apiFacadeExemptFiles = map[string]bool{

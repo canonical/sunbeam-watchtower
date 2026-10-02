@@ -14,9 +14,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/core/service/build"
-	"github.com/gboutry/sunbeam-watchtower/pkg/client"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/core/service/build"
+	"github.com/canonical/sunbeam-watchtower/pkg/client"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
 func TestBuildWorkflowTriggerAsync(t *testing.T) {

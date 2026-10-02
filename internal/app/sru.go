@@ -20,10 +20,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gboutry/sunbeam-watchtower/internal/config"
-	"github.com/gboutry/sunbeam-watchtower/internal/core/service/sru"
-	dto "github.com/gboutry/sunbeam-watchtower/pkg/dto/v1"
-	lp "github.com/gboutry/sunbeam-watchtower/pkg/launchpad/v1"
+	"github.com/canonical/sunbeam-watchtower/internal/config"
+	"github.com/canonical/sunbeam-watchtower/internal/core/service/sru"
+	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
+	lp "github.com/canonical/sunbeam-watchtower/pkg/launchpad/v1"
 )
 
 var ErrSRUNotSynced = errors.New("SRU monitor has no snapshot; run watchtower cache sync sru")
