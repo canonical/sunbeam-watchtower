@@ -423,6 +423,8 @@ type mockRepoManager struct {
 	defaultErr    error
 	branches      []dto.BranchRef
 	deleteErr     error
+	deleteMu      sync.Mutex
+	deletedRefs   []string
 }
 
 func (m *mockRepoManager) GetCurrentUser(_ context.Context) (string, error) {
@@ -479,7 +481,10 @@ func (m *mockRepoManager) ListBranches(_ context.Context, _ string) ([]dto.Branc
 	return m.branches, nil
 }
 
-func (m *mockRepoManager) DeleteGitRef(_ context.Context, _ string) error {
+func (m *mockRepoManager) DeleteGitRef(_ context.Context, ref string) error {
+	m.deleteMu.Lock()
+	defer m.deleteMu.Unlock()
+	m.deletedRefs = append(m.deletedRefs, ref)
 	return m.deleteErr
 }
 
@@ -1119,9 +1124,11 @@ func TestCleanup_PrefixDiscovery(t *testing.T) {
 		repoSelfLink: "https://api.launchpad.net/devel/~team/test-project/+git/rocks",
 		gitSSHURL:    "git+ssh://git.launchpad.net/~team/test-project/+git/rocks",
 		branches: []dto.BranchRef{
-			{Path: "refs/heads/tmp-build-abc12345", SelfLink: "/ref/tmp-build-abc12345"},
-			{Path: "refs/heads/tmp-build-def99999", SelfLink: "/ref/tmp-build-def99999"},
+			{Path: "refs/heads/tmp-tmp-build-abc12345", SelfLink: "/ref/tmp-tmp-build-abc12345"},
+			{Path: "refs/heads/tmp-tmp-build-def99999", SelfLink: "/ref/tmp-tmp-build-def99999"},
 			{Path: "refs/heads/main", SelfLink: "/ref/main"},
+			{Path: "refs/heads/tmp-build-abc12345", SelfLink: "/ref/unprefixed"},
+			{Path: "refs/heads/tmp-tmp-builder-abc12345", SelfLink: "/ref/neighbor"},
 		},
 	}
 
@@ -1157,13 +1164,21 @@ func TestCleanup_PrefixDiscovery(t *testing.T) {
 		}
 	}
 
-	// Should delete 2 branches matching prefix (not main).
+	// Should delete only the generated temporary branches matching the prefix.
 	if len(result.DeletedBranches) != 2 {
 		t.Errorf("expected 2 deleted branches, got %d: %v", len(result.DeletedBranches), result.DeletedBranches)
 	}
 	for _, branch := range result.DeletedBranches {
-		if branch != "refs/heads/tmp-build-abc12345" && branch != "refs/heads/tmp-build-def99999" {
+		if branch != "refs/heads/tmp-tmp-build-abc12345" && branch != "refs/heads/tmp-tmp-build-def99999" {
 			t.Errorf("unexpected deleted branch: %q", branch)
+		}
+	}
+	if len(repoMgr.deletedRefs) != 2 {
+		t.Fatalf("DeleteGitRef calls = %v, want two matching refs", repoMgr.deletedRefs)
+	}
+	for _, ref := range repoMgr.deletedRefs {
+		if ref != "/ref/tmp-tmp-build-abc12345" && ref != "/ref/tmp-tmp-build-def99999" {
+			t.Errorf("unexpected deleted ref: %q", ref)
 		}
 	}
 }
@@ -1180,7 +1195,7 @@ func TestCleanup_DryRun(t *testing.T) {
 		repoSelfLink: "https://api.launchpad.net/devel/~team/test-project/+git/rocks",
 		gitSSHURL:    "git+ssh://git.launchpad.net/~team/test-project/+git/rocks",
 		branches: []dto.BranchRef{
-			{Path: "refs/heads/tmp-build-abc12345", SelfLink: "/ref/tmp-build-abc12345"},
+			{Path: "refs/heads/tmp-tmp-build-abc12345", SelfLink: "/ref/tmp-tmp-build-abc12345"},
 		},
 	}
 
@@ -1213,6 +1228,9 @@ func TestCleanup_DryRun(t *testing.T) {
 	}
 	if len(result.DeletedBranches) != 1 {
 		t.Errorf("expected 1 deleted branch in dry run, got %d", len(result.DeletedBranches))
+	}
+	if len(repoMgr.deletedRefs) != 0 {
+		t.Fatalf("dry run called DeleteGitRef: %v", repoMgr.deletedRefs)
 	}
 }
 

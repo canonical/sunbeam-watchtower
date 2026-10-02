@@ -1289,7 +1289,9 @@ func (s *Service) cleanupBranches(ctx context.Context, opts CleanupOpts) ([]stri
 		return nil, fmt.Errorf("resolve LP project for branch cleanup: %w", err)
 	}
 
-	branchPrefix := "refs/heads/" + opts.Prefix
+	// PrepareTrigger names branches tmp-<recipe-prefix>-<short-sha>.
+	// Include the separator so neighboring recipe prefixes do not match.
+	branchPrefix := "refs/heads/tmp-" + opts.Prefix + "-"
 
 	// Check each watchtower project's repo for matching branches.
 	var deleted []string
