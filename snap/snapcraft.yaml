@@ -18,7 +18,7 @@ parts:
     plugin: go
     source: .
     build-snaps:
-      - go/1.25/stable
+      - go/1.26/stable
     override-build: |
       go build -o $CRAFT_PART_INSTALL/bin/watchtower ./cmd/watchtower
       go build -o $CRAFT_PART_INSTALL/bin/watchtower-tui ./cmd/watchtower-tui
