@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/canonical/sunbeam-watchtower/internal/testsupport"
 	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 
 	forge "github.com/canonical/sunbeam-watchtower/pkg/forge/v1"
@@ -43,9 +44,9 @@ func setupTestRepo(t *testing.T) string {
 		bareDir := filepath.Join(dir, "bare.git")
 
 		run := func(args ...string) error {
-			cmd := exec.Command(args[0], args[1:]...)
+			cmd := testsupport.GitCommand(args[1:]...)
 			cmd.Dir = workDir
-			cmd.Env = append(os.Environ(),
+			cmd.Env = append(cmd.Env,
 				"GIT_AUTHOR_NAME=Test Author",
 				"GIT_AUTHOR_EMAIL=test@example.com",
 				"GIT_COMMITTER_NAME=Test Author",
@@ -106,7 +107,7 @@ func setupTestRepo(t *testing.T) string {
 			return
 		}
 
-		cmd := exec.Command("git", "clone", "--bare", workDir, bareDir)
+		cmd := testsupport.GitCommand("clone", "--bare", workDir, bareDir)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			errTestRepo = fmt.Errorf("bare clone failed: %w\n%s", err, out)
@@ -186,9 +187,9 @@ func TestCache_FetchesRevisionTagAndListsTaggedHistory(t *testing.T) {
 	}
 	run := func(cwd string, args ...string) {
 		t.Helper()
-		cmd := exec.Command(args[0], args[1:]...)
+		cmd := testsupport.GitCommand(args[1:]...)
 		cmd.Dir = cwd
-		cmd.Env = append(os.Environ(),
+		cmd.Env = append(cmd.Env,
 			"GIT_AUTHOR_NAME=Test Author", "GIT_AUTHOR_EMAIL=test@example.com",
 			"GIT_COMMITTER_NAME=Test Author", "GIT_COMMITTER_EMAIL=test@example.com",
 		)
@@ -381,9 +382,9 @@ func commitFiles(t *testing.T, repoDir string, files map[string]string, message 
 func runGitDir(t *testing.T, dir string, args ...string) {
 	t.Helper()
 
-	cmd := exec.Command("git", args...)
+	cmd := testsupport.GitCommand(args...)
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(),
+	cmd.Env = append(cmd.Env,
 		"GIT_AUTHOR_NAME=Test Author",
 		"GIT_AUTHOR_EMAIL=test@example.com",
 		"GIT_COMMITTER_NAME=Test Author",

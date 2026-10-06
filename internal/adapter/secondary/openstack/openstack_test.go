@@ -6,10 +6,10 @@ package openstack
 import (
 	"context"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 
+	"github.com/canonical/sunbeam-watchtower/internal/testsupport"
 	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
@@ -268,6 +268,7 @@ releases:
 
 func initTestGitRepo(t *testing.T) string {
 	t.Helper()
+	testsupport.ClearGitEnvironment(t)
 	dir := t.TempDir()
 	runTestGit(t, dir, "init")
 	runTestGit(t, dir, "config", "user.email", "watchtower@example.invalid")
@@ -295,7 +296,7 @@ func commitTestRepo(t *testing.T, repo string) {
 
 func runTestGit(t *testing.T, repo string, args ...string) {
 	t.Helper()
-	cmd := exec.Command("git", append([]string{"-C", repo}, args...)...)
+	cmd := testsupport.GitCommand(append([]string{"-C", repo}, args...)...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("git %v failed: %v\n%s", args, err, out)
