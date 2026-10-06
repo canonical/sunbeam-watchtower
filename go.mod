@@ -8,7 +8,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/danielgtaylor/huma/v2 v2.39.1
-	github.com/fsnotify/fsnotify v1.9.0
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/go-chi/chi/v5 v5.3.1
 	github.com/go-git/go-git/v5 v5.19.3
 	github.com/go-macaroon-bakery/macaroon-bakery/v3 v3.0.2
