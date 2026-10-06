@@ -315,3 +315,40 @@ func TestSRUVersionsCommandDefaultsToAllSeries(t *testing.T) {
 		}
 	}
 }
+
+func TestSRUPocketViewCommandUsesCachedViewWorkflow(t *testing.T) {
+	result := dto.SRUPocketView{Series: "caracal", UbuntuBase: "jammy", ParentSeries: "noble", CacheStatus: []dto.CacheStatus{{Name: "ubuntu/caracal", LastUpdated: time.Date(2026, 10, 6, 8, 0, 0, 0, time.UTC)}}, Rows: []dto.SRUVersions{}}
+	for _, name := range []string{"nova", "openvswitch"} {
+		result.Rows = append(result.Rows, dto.SRUVersions{Query: dto.SRUVersionsQuery{Package: name, Series: "caracal"}, Cells: []dto.SRUVersionCell{{Label: "Ubuntu noble", Version: "3-1", State: "current"}, {Label: "staging", Version: "3-1~cloud0", State: "current"}, {Label: "proposed", Version: "2-1~cloud0", State: "behind"}, {Label: "updates", State: "unknown", Warning: "no cached coverage"}}})
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/sru/view/caracal" || r.Method != "GET" {
+			t.Errorf("request=%s %s", r.Method, r.URL)
+		}
+		_ = json.NewEncoder(w).Encode(result)
+	}))
+	defer server.Close()
+	for _, format := range []string{"table", "json", "yaml"} {
+		var out bytes.Buffer
+		cmd := newSRUCmd(&Options{Out: &out, Output: format, Client: client.NewClient(server.URL)})
+		cmd.SetArgs([]string{"view", "caracal"})
+		if err := cmd.Execute(); err != nil {
+			t.Fatal(err)
+		}
+		for _, word := range []string{"nova", "openvswitch", "current", "behind", "unknown"} {
+			if !strings.Contains(out.String(), word) {
+				t.Fatalf("missing %s: %s", word, out.String())
+			}
+		}
+		if format == "table" && (!strings.Contains(out.String(), "2026-10-06 08:00 UTC") || strings.Count(out.String(), "no cached coverage") != 1) {
+			t.Fatalf("cached output=%s", out.String())
+		}
+		leaf, _, err := cmd.Find([]string{"view"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if commandActionID(leaf, nil) != frontend.ActionSRUPocketView {
+			t.Fatal("wrong pocket view action")
+		}
+	}
+}

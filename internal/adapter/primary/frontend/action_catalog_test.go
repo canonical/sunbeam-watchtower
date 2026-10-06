@@ -115,3 +115,10 @@ func TestSRUVersionsAccessClassification(t *testing.T) {
 		t.Fatalf("versions classification=%+v", action)
 	}
 }
+
+func TestSRUPocketViewAccessClassification(t *testing.T) {
+	action := DescribeAction(ActionSRUPocketView)
+	if action.Mutability != MutabilityRead || action.LocalEffect != LocalEffectRead || action.RuntimeRequirement != RuntimeEmbeddedOK || action.ExportPolicy != ExportPolicyAllowed {
+		t.Fatalf("pocket view classification=%+v", action)
+	}
+}

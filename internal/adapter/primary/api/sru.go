@@ -11,6 +11,7 @@ import (
 
 	"github.com/canonical/sunbeam-watchtower/internal/adapter/primary/frontend"
 	"github.com/canonical/sunbeam-watchtower/internal/app"
+	"github.com/canonical/sunbeam-watchtower/internal/core/service/sru"
 	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 	"github.com/danielgtaylor/huma/v2"
 )
@@ -46,12 +47,33 @@ type sruAllVersionsInput struct {
 }
 type sruAllVersionsOutput struct{ Body dto.SRUVersionList }
 
+type sruPocketViewInput struct {
+	Series string `path:"series"`
+}
+type sruPocketViewOutput struct{ Body dto.SRUPocketView }
+
 type sruShowInput struct {
 	ID string `path:"id"`
 }
 
 func RegisterSRUAPI(api huma.API, application *app.App) {
 	workflow := frontend.NewServerFacade(application).SRU()
+	huma.Register(api, huma.Operation{OperationID: "sru-pocket-view", Method: http.MethodGet, Path: "/api/v1/sru/view/{series}", Summary: "View cached package progression scoped by UCA staging", Tags: []string{"sru"}}, func(ctx context.Context, input *sruPocketViewInput) (*sruPocketViewOutput, error) {
+		result, err := workflow.PocketView(ctx, input.Series)
+		if err != nil {
+			if errors.Is(err, app.ErrSRUMigrationQuery) {
+				return nil, huma.Error422UnprocessableEntity(err.Error())
+			}
+			if errors.Is(err, app.ErrSRUMigrationTarget) {
+				return nil, huma.Error404NotFound(err.Error())
+			}
+			if errors.Is(err, sru.ErrStagingInventoryUnavailable) {
+				return nil, huma.NewError(http.StatusConflict, err.Error())
+			}
+			return nil, huma.Error500InternalServerError(fmt.Sprintf("reading cached SRU pocket view: %v", err))
+		}
+		return &sruPocketViewOutput{Body: *result}, nil
+	})
 	huma.Register(api, huma.Operation{OperationID: "sru-versions-all", Method: http.MethodGet, Path: "/api/v1/sru/versions/{package}", Summary: "Inspect version currency across every configured UCA series", Tags: []string{"sru"}}, func(ctx context.Context, input *sruAllVersionsInput) (*sruAllVersionsOutput, error) {
 		result, err := workflow.AllVersions(ctx, input.Package)
 		if err != nil {

@@ -59,3 +59,9 @@ func (c *Client) SRUAllVersions(ctx context.Context, source string) (*dto.SRUVer
 	err := c.get(ctx, "/api/v1/sru/versions/"+url.PathEscape(source), nil, &result)
 	return &result, err
 }
+
+func (c *Client) SRUPocketView(ctx context.Context, series string) (*dto.SRUPocketView, error) {
+	var result dto.SRUPocketView
+	err := c.get(ctx, "/api/v1/sru/view/"+url.PathEscape(series), nil, &result)
+	return &result, err
+}

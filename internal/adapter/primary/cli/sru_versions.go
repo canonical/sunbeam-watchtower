@@ -77,22 +77,7 @@ func renderSRUVersionRow(opts *Options, result *dto.SRUVersions) error {
 			states = append(states, "")
 		}
 		headers = append(headers, styler.Header(sruDisplayText(cell.Label)))
-		value := sruDisplayText(cell.Version)
-		if value == "" {
-			value = "—"
-		}
-		state := sruDisplayText(cell.State)
-		switch cell.State {
-		case "current":
-			value = styler.apply(styler.success, value)
-			state = styler.apply(styler.success, state)
-		case "behind":
-			value = styler.Warning(value)
-			state = styler.Warning(state)
-		default:
-			value = styler.Dim(value)
-			state = styler.Dim(state)
-		}
+		value, state := sruVersionCellText(styler, cell)
 		values = append(values, value)
 		states = append(states, state)
 	}
@@ -107,4 +92,20 @@ func renderSRUVersionRow(opts *Options, result *dto.SRUVersions) error {
 		}
 	}
 	return nil
+}
+
+func sruVersionCellText(styler *outputStyler, cell dto.SRUVersionCell) (string, string) {
+	value := sruDisplayText(cell.Version)
+	if value == "" {
+		value = "—"
+	}
+	state := sruDisplayText(cell.State)
+	switch cell.State {
+	case "current":
+		return styler.apply(styler.success, value), styler.apply(styler.success, state)
+	case "behind":
+		return styler.Warning(value), styler.Warning(state)
+	default:
+		return styler.Dim(value), styler.Dim(state)
+	}
 }

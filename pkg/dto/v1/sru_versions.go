@@ -34,3 +34,13 @@ type SRUVersionList struct {
 	Package    string        `json:"package" yaml:"package"`
 	Rows       []SRUVersions `json:"rows" yaml:"rows"`
 }
+
+// SRUPocketView is an offline snapshot scoped by the cached staging inventory.
+type SRUPocketView struct {
+	ObservedAt   time.Time     `json:"observed_at" yaml:"observed_at"`
+	Series       string        `json:"series" yaml:"series"`
+	UbuntuBase   string        `json:"ubuntu_base" yaml:"ubuntu_base"`
+	ParentSeries string        `json:"parent_series,omitempty" yaml:"parent_series,omitempty"`
+	CacheStatus  []CacheStatus `json:"cache_status" yaml:"cache_status"`
+	Rows         []SRUVersions `json:"rows" yaml:"rows"`
+}

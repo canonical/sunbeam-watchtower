@@ -36,3 +36,7 @@ func (w *SRUServerWorkflow) Versions(ctx context.Context, query dto.SRUVersionsQ
 func (w *SRUServerWorkflow) AllVersions(ctx context.Context, source string) (*dto.SRUVersionList, error) {
 	return w.application.SRUAllVersions(ctx, source)
 }
+
+func (w *SRUServerWorkflow) PocketView(ctx context.Context, series string) (*dto.SRUPocketView, error) {
+	return w.application.SRUPocketView(ctx, series)
+}

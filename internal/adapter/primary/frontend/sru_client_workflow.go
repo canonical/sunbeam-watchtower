@@ -51,3 +51,10 @@ func (w *SRUClientWorkflow) AllVersions(ctx context.Context, source string) (*dt
 	}
 	return w.client.SRUAllVersions(ctx, source)
 }
+
+func (w *SRUClientWorkflow) PocketView(ctx context.Context, series string) (*dto.SRUPocketView, error) {
+	if w.client == nil || w.client.Client == nil {
+		return nil, errors.New("no server client configured")
+	}
+	return w.client.SRUPocketView(ctx, series)
+}
