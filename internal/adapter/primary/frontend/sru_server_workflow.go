@@ -24,3 +24,19 @@ func (w *SRUServerWorkflow) List(_ context.Context, filter dto.SRUFilter) (*dto.
 func (w *SRUServerWorkflow) Refresh(ctx context.Context) (*dto.SRUSnapshot, error) {
 	return w.application.RefreshSRU(ctx)
 }
+
+func (w *SRUServerWorkflow) Migration(ctx context.Context, query dto.SRUMigrationQuery) (*dto.SRUMigrationChain, error) {
+	return w.application.SRUMigration(ctx, query)
+}
+
+func (w *SRUServerWorkflow) Versions(ctx context.Context, query dto.SRUVersionsQuery) (*dto.SRUVersions, error) {
+	return w.application.SRUVersions(ctx, query)
+}
+
+func (w *SRUServerWorkflow) AllVersions(ctx context.Context, source string) (*dto.SRUVersionList, error) {
+	return w.application.SRUAllVersions(ctx, source)
+}
+
+func (w *SRUServerWorkflow) PocketView(ctx context.Context, series string) (*dto.SRUPocketView, error) {
+	return w.application.SRUPocketView(ctx, series)
+}

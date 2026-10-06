@@ -11,6 +11,7 @@ import (
 
 // UpstreamProvider resolves upstream package versions for a set of packages.
 type UpstreamProvider interface {
+	ListSeries(ctx context.Context) ([]dto.UpstreamSeries, error)
 	DefaultRelease(ctx context.Context) (string, error)
 	ResolveRelease(ctx context.Context, release string) (string, error)
 	ListDeliverables(ctx context.Context, release string) ([]dto.Deliverable, error)

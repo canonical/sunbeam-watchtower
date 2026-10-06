@@ -6,10 +6,10 @@ package openstack
 import (
 	"context"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 
+	"github.com/canonical/sunbeam-watchtower/internal/testsupport"
 	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
@@ -268,6 +268,7 @@ releases:
 
 func initTestGitRepo(t *testing.T) string {
 	t.Helper()
+	testsupport.ClearGitEnvironment(t)
 	dir := t.TempDir()
 	runTestGit(t, dir, "init")
 	runTestGit(t, dir, "config", "user.email", "watchtower@example.invalid")
@@ -295,7 +296,7 @@ func commitTestRepo(t *testing.T, repo string) {
 
 func runTestGit(t *testing.T, repo string, args ...string) {
 	t.Helper()
-	cmd := exec.Command("git", append([]string{"-C", repo}, args...)...)
+	cmd := testsupport.GitCommand(append([]string{"-C", repo}, args...)...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("git %v failed: %v\n%s", args, err, out)
@@ -448,5 +449,27 @@ func TestIsLifecycleVersion(t *testing.T) {
 				t.Errorf("isLifecycleVersion(%q) = %v, want %v", tt.version, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestListSeriesRetainsCachedOrderAndLifecycle(t *testing.T) {
+	repo := initTestGitRepo(t)
+	writeTestFile(t, repo, "data/series_status.yaml", `---
+- name: epoxy
+  release-id: 2025.1
+  status: maintained
+- name: caracal
+  release-id: 2024.1
+  status: unmaintained
+- name: yoga
+  status: end of life
+`)
+	commitTestRepo(t, repo)
+	got, err := NewProvider(repo, "").ListSeries(context.Background())
+	if err != nil || len(got) != 3 || got[0].Name != "epoxy" || got[1].ReleaseID != "2024.1" || got[2].Status != "end of life" || got[2].ReleaseID != "" {
+		t.Fatalf("ListSeries = %+v, %v", got, err)
+	}
+	if _, err := NewProvider(t.TempDir(), "").ListSeries(context.Background()); err == nil {
+		t.Fatal("missing upstream metadata accepted")
 	}
 }

@@ -3,6 +3,13 @@
 
 package dto
 
+// UpstreamSeries is upstream lifecycle metadata, not a distro support promise.
+type UpstreamSeries struct {
+	Name      string `json:"name" yaml:"name"`
+	ReleaseID string `json:"release_id" yaml:"release_id"`
+	Status    string `json:"status" yaml:"status"`
+}
+
 // DeliverableType classifies upstream project deliverables.
 type DeliverableType int
 

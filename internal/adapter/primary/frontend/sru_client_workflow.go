@@ -30,3 +30,31 @@ func (w *SRUClientWorkflow) Show(ctx context.Context, id string) (*dto.SRUSnapsh
 	}
 	return w.client.SRUShow(ctx, id)
 }
+
+func (w *SRUClientWorkflow) Migration(ctx context.Context, query dto.SRUMigrationQuery) (*dto.SRUMigrationChain, error) {
+	if w.client == nil || w.client.Client == nil {
+		return nil, errors.New("no server client configured")
+	}
+	return w.client.SRUMigration(ctx, query)
+}
+
+func (w *SRUClientWorkflow) Versions(ctx context.Context, query dto.SRUVersionsQuery) (*dto.SRUVersions, error) {
+	if w.client == nil || w.client.Client == nil {
+		return nil, errors.New("no server client configured")
+	}
+	return w.client.SRUVersions(ctx, query)
+}
+
+func (w *SRUClientWorkflow) AllVersions(ctx context.Context, source string) (*dto.SRUVersionList, error) {
+	if w.client == nil || w.client.Client == nil {
+		return nil, errors.New("no server client configured")
+	}
+	return w.client.SRUAllVersions(ctx, source)
+}
+
+func (w *SRUClientWorkflow) PocketView(ctx context.Context, series string) (*dto.SRUPocketView, error) {
+	if w.client == nil || w.client.Client == nil {
+		return nil, errors.New("no server client configured")
+	}
+	return w.client.SRUPocketView(ctx, series)
+}

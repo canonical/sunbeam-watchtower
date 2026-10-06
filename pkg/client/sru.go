@@ -40,3 +40,28 @@ func (c *Client) SRUShow(ctx context.Context, id string) (*dto.SRUSnapshot, erro
 	err := c.get(ctx, "/api/v1/sru/"+url.PathEscape(id), nil, &result)
 	return &result, err
 }
+
+func (c *Client) SRUMigration(ctx context.Context, query dto.SRUMigrationQuery) (*dto.SRUMigrationChain, error) {
+	var result dto.SRUMigrationChain
+	path := "/api/v1/sru/migration/" + url.PathEscape(query.Package) + "/" + url.PathEscape(query.Series) + "/" + url.PathEscape(query.BugID)
+	err := c.get(ctx, path, nil, &result)
+	return &result, err
+}
+
+func (c *Client) SRUVersions(ctx context.Context, query dto.SRUVersionsQuery) (*dto.SRUVersions, error) {
+	var result dto.SRUVersions
+	err := c.get(ctx, "/api/v1/sru/versions/"+url.PathEscape(query.Package)+"/"+url.PathEscape(query.Series), nil, &result)
+	return &result, err
+}
+
+func (c *Client) SRUAllVersions(ctx context.Context, source string) (*dto.SRUVersionList, error) {
+	var result dto.SRUVersionList
+	err := c.get(ctx, "/api/v1/sru/versions/"+url.PathEscape(source), nil, &result)
+	return &result, err
+}
+
+func (c *Client) SRUPocketView(ctx context.Context, series string) (*dto.SRUPocketView, error) {
+	var result dto.SRUPocketView
+	err := c.get(ctx, "/api/v1/sru/view/"+url.PathEscape(series), nil, &result)
+	return &result, err
+}

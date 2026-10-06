@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/primary/frontend"
+
 	"github.com/canonical/sunbeam-watchtower/pkg/client"
 	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 	"github.com/charmbracelet/lipgloss"
@@ -205,6 +207,148 @@ func TestSRUBugIDAcceptsLaunchpadURLs(t *testing.T) {
 		"https://bugs.launchpad.net:8443/+bug/2167438", "https://user@bugs.launchpad.net/+bug/2167438"} {
 		if _, err := sruBugID(raw); err == nil {
 			t.Errorf("accepted %q", raw)
+		}
+	}
+}
+
+func TestSRUMigrationCommandUsesSharedWorkflowAndShowsInference(t *testing.T) {
+	result := dto.SRUMigrationChain{ObservedAt: time.Now(), Query: dto.SRUMigrationQuery{Package: "nova", Series: "caracal", BugID: "42"}, Scope: "configured series", FirstOutstanding: []string{"uca/epoxy/occupant/updates"}, Transitions: []dto.SRUMigrationTransition{{ID: "uca/epoxy/occupant/updates", Package: "nova", Archive: "uca", Series: "epoxy", Version: "2", From: "proposed", To: "updates", State: "pending", Kind: "occupant", Reason: "inferred proposed occupancy"}}}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/v1/sru/migration/nova/caracal/42" {
+			t.Errorf("request=%s %s", r.Method, r.URL)
+		}
+		_ = json.NewEncoder(w).Encode(result)
+	}))
+	defer server.Close()
+	for _, format := range []string{"table", "json", "yaml"} {
+		var out bytes.Buffer
+		options := &Options{Out: &out, Output: format, Client: client.NewClient(server.URL)}
+		command := newSRUCmd(options)
+		command.SetArgs([]string{"chain", "nova", "--series", "caracal", "--bug-id", "https://bugs.launchpad.net/cloud-archive/+bug/42"})
+		if err := command.Execute(); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(out.String(), "uca/epoxy/occupant/updates") {
+			t.Fatalf("missing first transition in %s: %s", format, out.String())
+		}
+		if format == "table" && (!strings.Contains(out.String(), "migration eligibility is not established") || !strings.Contains(out.String(), "First outstanding")) {
+			t.Fatalf("inference boundary missing: %s", out.String())
+		}
+		leaf, _, err := command.Find([]string{"chain"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := commandActionID(leaf, nil); got != frontend.ActionSRUMigration {
+			t.Fatalf("action=%s", got)
+		}
+	}
+}
+
+func TestSRUMigrationTableKeepsUnassociatedInventoryVisible(t *testing.T) {
+	var out bytes.Buffer
+	result := &dto.SRUMigrationChain{Query: dto.SRUMigrationQuery{Package: "nova", Series: "caracal", BugID: "42"}, Inventory: []dto.SRUMigrationTarget{{Archive: "uca", Series: "yoga", Relation: "lower; fix not observed", Pockets: []dto.SRUPocketObservation{{Pocket: "proposed", Known: true, Publications: []dto.SRUPublication{{Version: "2", BugsKnown: false}}}}}}}
+	if err := renderSRUMigration(&out, result); err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{"uca/yoga", "proposed", "unknown", "lower; fix not observed"} {
+		if !strings.Contains(out.String(), expected) {
+			t.Fatalf("inventory missing %q: %s", expected, out.String())
+		}
+	}
+}
+
+func TestSRUVersionsCommandShowsBugIndependentCurrency(t *testing.T) {
+	result := dto.SRUVersions{Query: dto.SRUVersionsQuery{Package: "openvswitch", Series: "yoga"}, UbuntuBase: "focal", ParentSeries: "jammy", Cells: []dto.SRUVersionCell{{Label: "Ubuntu jammy", Version: "2.17.12-1", State: "current"}, {Label: "staging", Version: "2.17.12-1~cloud0", State: "current"}, {Label: "proposed", Version: "2.17.9-1~cloud0", State: "behind"}, {Label: "updates", Version: "2.17.9-1~cloud0", State: "behind"}}}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" || r.URL.Path != "/api/v1/sru/versions/openvswitch/yoga" {
+			t.Errorf("request=%s %s", r.Method, r.URL)
+		}
+		_ = json.NewEncoder(w).Encode(result)
+	}))
+	defer server.Close()
+	for _, format := range []string{"table", "json", "yaml"} {
+		var out bytes.Buffer
+		command := newSRUCmd(&Options{Out: &out, Output: format, Client: client.NewClient(server.URL)})
+		command.SetArgs([]string{"versions", "openvswitch", "--series", "yoga"})
+		if err := command.Execute(); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(out.String(), "current") || !strings.Contains(out.String(), "behind") || !strings.Contains(out.String(), "2.17.9-1~cloud0") {
+			t.Fatalf("output=%s", out.String())
+		}
+		leaf, _, err := command.Find([]string{"versions"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if commandActionID(leaf, nil) != frontend.ActionSRUVersions {
+			t.Fatal("wrong classification")
+		}
+	}
+}
+
+func TestSRUVersionsCommandDefaultsToAllSeries(t *testing.T) {
+	rows := []dto.SRUVersions{}
+	for _, series := range []string{"caracal", "yoga"} {
+		rows = append(rows, dto.SRUVersions{Query: dto.SRUVersionsQuery{Package: "openvswitch", Series: series}, Cells: []dto.SRUVersionCell{{Label: "Ubuntu parent", Version: "2-1", State: "current"}, {Label: "staging", Version: "2-1~cloud0", State: "current"}, {Label: "proposed", Version: "1-1~cloud0", State: "behind"}, {Label: "updates", Version: "1-1~cloud0", State: "behind"}}})
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/sru/versions/openvswitch" {
+			t.Errorf("path=%s", r.URL.Path)
+		}
+		_ = json.NewEncoder(w).Encode(dto.SRUVersionList{Package: "openvswitch", Rows: rows})
+	}))
+	defer server.Close()
+	for _, format := range []string{"table", "json", "yaml"} {
+		var out bytes.Buffer
+		cmd := newSRUCmd(&Options{Out: &out, Output: format, Client: client.NewClient(server.URL)})
+		cmd.SetArgs([]string{"versions", "openvswitch"})
+		if err := cmd.Execute(); err != nil {
+			t.Fatal(err)
+		}
+		for _, series := range []string{"caracal", "yoga"} {
+			if !strings.Contains(out.String(), series) {
+				t.Fatalf("missing %s: %s", series, out.String())
+			}
+		}
+		if format == "table" && strings.Count(out.String(), "Green/current") != 1 {
+			t.Fatalf("repeated legend: %s", out.String())
+		}
+	}
+}
+
+func TestSRUPocketViewCommandUsesCachedViewWorkflow(t *testing.T) {
+	result := dto.SRUPocketView{Series: "caracal", UbuntuBase: "jammy", ParentSeries: "noble", CacheStatus: []dto.CacheStatus{{Name: "ubuntu/caracal", LastUpdated: time.Date(2026, 10, 6, 8, 0, 0, 0, time.UTC)}}, Rows: []dto.SRUVersions{}}
+	for _, name := range []string{"nova", "openvswitch"} {
+		result.Rows = append(result.Rows, dto.SRUVersions{Query: dto.SRUVersionsQuery{Package: name, Series: "caracal"}, Cells: []dto.SRUVersionCell{{Label: "Ubuntu noble", Version: "3-1", State: "current"}, {Label: "staging", Version: "3-1~cloud0", State: "current"}, {Label: "proposed", Version: "2-1~cloud0", State: "behind"}, {Label: "updates", State: "unknown", Warning: "no cached coverage"}}})
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/sru/view/caracal" || r.Method != "GET" {
+			t.Errorf("request=%s %s", r.Method, r.URL)
+		}
+		_ = json.NewEncoder(w).Encode(result)
+	}))
+	defer server.Close()
+	for _, format := range []string{"table", "json", "yaml"} {
+		var out bytes.Buffer
+		cmd := newSRUCmd(&Options{Out: &out, Output: format, Client: client.NewClient(server.URL)})
+		cmd.SetArgs([]string{"view", "caracal"})
+		if err := cmd.Execute(); err != nil {
+			t.Fatal(err)
+		}
+		for _, word := range []string{"nova", "openvswitch", "current", "behind", "unknown"} {
+			if !strings.Contains(out.String(), word) {
+				t.Fatalf("missing %s: %s", word, out.String())
+			}
+		}
+		if format == "table" && (!strings.Contains(out.String(), "2026-10-06 08:00 UTC") || strings.Count(out.String(), "no cached coverage") != 1) {
+			t.Fatalf("cached output=%s", out.String())
+		}
+		leaf, _, err := cmd.Find([]string{"view"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if commandActionID(leaf, nil) != frontend.ActionSRUPocketView {
+			t.Fatal("wrong pocket view action")
 		}
 	}
 }

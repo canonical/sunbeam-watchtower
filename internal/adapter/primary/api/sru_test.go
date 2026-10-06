@@ -4,15 +4,24 @@
 package api
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/canonical/sunbeam-watchtower/internal/app"
+	lp "github.com/canonical/sunbeam-watchtower/pkg/launchpad/v1"
+
 	"github.com/canonical/sunbeam-watchtower/internal/config"
+	"github.com/canonical/sunbeam-watchtower/internal/testsupport"
 	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 )
 
@@ -109,5 +118,407 @@ func TestSRUAPIReportsMissingSnapshotAndFiltersRows(t *testing.T) {
 	response.Body.Close()
 	if response.StatusCode != http.StatusInternalServerError {
 		t.Fatalf("unconfigured cache sync status = %d", response.StatusCode)
+	}
+}
+
+func TestSRUMigrationAPISeparatesValidationMissingTargetsAndUnavailableOrder(t *testing.T) {
+	srv, base := startTestServer(t)
+	defer srv.Shutdown(context.Background())
+	cfg := &config.Config{Packages: config.PackagesConfig{
+		Sets:    map[string][]string{"openstack": {"nova"}},
+		Distros: map[string]config.DistroConfig{"ubuntu": {Releases: map[string]config.ReleaseConfig{"jammy": {Backports: map[string]config.BackportConfig{"caracal": {}}}}}},
+	}}
+	RegisterSRUAPI(srv.API(), newEphemeralTestApp(t, cfg))
+	for _, test := range []struct {
+		path   string
+		status int
+	}{
+		{"nova/caracal/0", http.StatusUnprocessableEntity},
+		{"Nova/caracal/42", http.StatusUnprocessableEntity},
+		{"missing/caracal/42", http.StatusConflict},
+		{"nova/missing/42", http.StatusNotFound},
+		{"nova/caracal/42", http.StatusConflict},
+	} {
+		response, err := http.Get(base + "/api/v1/sru/migration/" + test.path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response.Body.Close()
+		if response.StatusCode != test.status {
+			t.Errorf("%s: status=%d, want %d", test.path, response.StatusCode, test.status)
+		}
+	}
+}
+
+func TestSRUMigrationAPICollectsBuglessOccupantAndIndirectDependencies(t *testing.T) {
+	testsupport.ClearGitEnvironment(t)
+	srv, base := startTestServer(t)
+	defer srv.Shutdown(context.Background())
+	cfg := &config.Config{Packages: config.PackagesConfig{
+		Upstream: &config.UpstreamConfig{Provider: "openstack", ReleasesRepo: "https://example.invalid/releases.git"},
+		Distros: map[string]config.DistroConfig{"ubuntu": {Releases: map[string]config.ReleaseConfig{
+			"jammy": {Backports: map[string]config.BackportConfig{"caracal": {}}},
+			"noble": {Backports: map[string]config.BackportConfig{"epoxy": {}}},
+		}}},
+	}}
+	application := newEphemeralTestApp(t, cfg)
+	cacheDir, err := app.UpstreamCacheDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := app.UpstreamRepoPath(cacheDir, cfg.Packages.Upstream.ReleasesRepo)
+	if err := os.MkdirAll(filepath.Join(repo, "data"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "data", "series_status.yaml"), []byte("- name: epoxy\n  release-id: 2025.1\n  status: maintained\n- name: caracal\n  release-id: 2024.1\n  status: unmaintained\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{
+		{"init"}, {"add", "data/series_status.yaml"},
+		{"-c", "user.name=Watchtower Test", "-c", "user.email=watchtower@example.invalid", "-c", "commit.gpgsign=false", "commit", "-m", "test release metadata"},
+	} {
+		command := testsupport.GitCommand(args...)
+		command.Dir = repo
+		if output, err := command.CombinedOutput(); err != nil {
+			t.Fatalf("git fixture: %v: %s", err, output)
+		}
+	}
+	original := http.DefaultTransport
+	withDefaultTransport(t, roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Hostname() != "api.launchpad.net" && r.URL.Hostname() != "launchpad.net" {
+			return original.RoundTrip(r)
+		}
+		if r.URL.Path == "/devel/bugs/42" {
+			return jsonResponse(http.StatusOK, `{"id":42,"information_type":"Public"}`), nil
+		}
+		if r.URL.Query().Get("ws.op") == "getPublishedSources" {
+			archive := r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
+			series, pocket, _ := strings.Cut(archive, "-")
+			ubuntuBase, version := "noble", map[string]string{"staging": "4", "proposed": "3", "updates": "2"}[pocket]
+			if series == "caracal" {
+				ubuntuBase = "jammy"
+				version = map[string]string{"staging": "6", "proposed": "5", "updates": "5"}[pocket]
+			}
+			publication := lp.SourcePublishing{Status: "Published", SourcePackageName: "nova", SourcePackageVersion: version, DistroSeriesLink: lp.APIBaseURL + "/ubuntu/" + ubuntuBase, SelfLink: lp.APIBaseURL + "/source/" + archive}
+			data, _ := json.Marshal(map[string]any{"entries": []lp.SourcePublishing{publication}})
+			return jsonResponse(http.StatusOK, string(data)), nil
+		}
+		if r.URL.Query().Get("ws.op") == "changesFileUrl" {
+			archive := r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
+			data, _ := json.Marshal("https://launchpad.net/" + archive + ".changes")
+			return jsonResponse(http.StatusOK, string(data)), nil
+		}
+		body := "Launchpad-Bugs-Fixed: 9\n"
+		if strings.HasSuffix(r.URL.Path, "-staging.changes") {
+			body = "Launchpad-Bugs-Fixed: 42\n"
+		}
+		if r.URL.Path == "/epoxy-proposed.changes" {
+			body = "Changes:\n  Security update without Launchpad references\n"
+		}
+		return jsonResponse(http.StatusOK, body), nil
+	}))
+	RegisterSRUAPI(srv.API(), application)
+	response, err := http.Get(base + "/api/v1/sru/migration/nova/caracal/42")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		data, _ := io.ReadAll(response.Body)
+		t.Fatalf("status=%d, body=%s", response.StatusCode, data)
+	}
+	var result dto.SRUMigrationChain
+	if err := json.NewDecoder(response.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	steps := map[string]dto.SRUMigrationTransition{}
+	for _, step := range result.Transitions {
+		steps[step.ID] = step
+	}
+	if steps["uca/epoxy/occupant/updates"].Version != "3" || !slices.Contains(steps["uca/caracal/proposed"].DependsOn, "uca/epoxy/proposed") || !slices.Contains(result.FirstOutstanding, "uca/epoxy/occupant/updates") {
+		t.Fatalf("chain=%+v", result)
+	}
+	if len(result.Targets) != 2 || result.Targets[0].Pockets[1].Publications[0].BugsKnown {
+		t.Fatalf("bugless inventory=%+v", result.Targets)
+	}
+}
+
+func TestSRUVersionsAPINeedsNoBugsSetsOrOrdering(t *testing.T) {
+	srv, base := startTestServer(t)
+	defer srv.Shutdown(context.Background())
+	cfg := &config.Config{Packages: config.PackagesConfig{
+		Distros: map[string]config.DistroConfig{"ubuntu": {Releases: map[string]config.ReleaseConfig{
+			"focal": {Backports: map[string]config.BackportConfig{"yoga": {ParentRelease: "jammy"}}},
+		}}},
+	}}
+	failSecurity := false
+	requests := 0
+	original := http.DefaultTransport
+	withDefaultTransport(t, roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Hostname() != "api.launchpad.net" {
+			return original.RoundTrip(r)
+		}
+		if r.URL.Query().Get("ws.op") != "getPublishedSources" {
+			t.Errorf("unexpected bug/changes request: %s", r.URL)
+			return jsonResponse(http.StatusInternalServerError, `{}`), nil
+		}
+		requests++
+		if r.URL.Query().Get("source_name") != "openvswitch" {
+			t.Errorf("source filter: %s", r.URL)
+		}
+		version, ubuntu := "2.17.9-0ubuntu0.22.04.1~cloud0", "focal"
+		if strings.HasSuffix(r.URL.Path, "yoga-staging") {
+			version = "2.17.12-0ubuntu0.22.04.1~cloud0"
+		}
+		if strings.HasSuffix(r.URL.Path, "primary") {
+			ubuntu = "jammy"
+			version = "2.17.12-0ubuntu0.22.04.1"
+			if r.URL.Query().Get("pocket") == "Release" {
+				version = "2.17.0-0ubuntu1"
+			}
+			if r.URL.Query().Get("pocket") == "Security" && failSecurity {
+				return jsonResponse(http.StatusServiceUnavailable, `{}`), nil
+			}
+		}
+		data, _ := json.Marshal(map[string]any{"entries": []lp.SourcePublishing{{Status: "Published", SourcePackageName: "openvswitch", SourcePackageVersion: version, DistroSeriesLink: lp.APIBaseURL + "/ubuntu/" + ubuntu}}})
+		return jsonResponse(http.StatusOK, string(data)), nil
+	}))
+	RegisterSRUAPI(srv.API(), newEphemeralTestApp(t, cfg))
+	for _, failed := range []bool{false, true} {
+		failSecurity = failed
+		response, err := http.Get(base + "/api/v1/sru/versions/openvswitch/yoga")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got dto.SRUVersions
+		if response.StatusCode != http.StatusOK {
+			data, _ := io.ReadAll(response.Body)
+			t.Fatalf("status=%d: %s", response.StatusCode, data)
+		}
+		err = json.NewDecoder(response.Body).Decode(&got)
+		response.Body.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got.Cells) != 4 || got.Cells[0].Version != "2.17.12-0ubuntu0.22.04.1" || got.Cells[2].State != "behind" || got.Cells[3].State != "behind" {
+			t.Fatalf("versions=%+v", got)
+		}
+		want := "current"
+		if failed {
+			want = "unknown"
+		}
+		if got.Cells[0].State != want || got.Cells[1].State != want {
+			t.Fatalf("currency=%+v", got.Cells)
+		}
+	}
+	// The simulated 503 is attempted four times by the Launchpad client.
+	if requests != 15 {
+		t.Fatalf("publication requests=%d, want 15", requests)
+	}
+	for _, test := range []struct {
+		path   string
+		status int
+	}{{"openvswitch/missing", 404}, {"Invalid/yoga", 422}} {
+		response, err := http.Get(base + "/api/v1/sru/versions/" + test.path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response.Body.Close()
+		if response.StatusCode != test.status {
+			t.Fatalf("%s: status=%d", test.path, response.StatusCode)
+		}
+	}
+}
+
+func TestSRUVersionsAPIListsEveryConfiguredSeries(t *testing.T) {
+	srv, base := startTestServer(t)
+	defer srv.Shutdown(context.Background())
+	cfg := &config.Config{Packages: config.PackagesConfig{Distros: map[string]config.DistroConfig{"ubuntu": {Releases: map[string]config.ReleaseConfig{
+		"focal": {Backports: map[string]config.BackportConfig{"yoga": {ParentRelease: "jammy"}}},
+		"jammy": {Backports: map[string]config.BackportConfig{"caracal": {ParentRelease: "noble"}}},
+	}}}}}
+	original := http.DefaultTransport
+	withDefaultTransport(t, roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Hostname() != "api.launchpad.net" {
+			return original.RoundTrip(r)
+		}
+		if r.URL.Query().Get("ws.op") != "getPublishedSources" {
+			t.Errorf("unexpected request: %s", r.URL)
+			return jsonResponse(500, `{}`), nil
+		}
+		ubuntu := r.URL.Query().Get("distro_series")
+		version := "2-1"
+		if strings.HasSuffix(ubuntu, "noble") || strings.Contains(r.URL.Path, "caracal-") {
+			version = "10-1"
+		}
+		if strings.Contains(r.URL.Path, "yoga-") || strings.Contains(r.URL.Path, "caracal-") {
+			version += "~cloud0"
+		}
+		data, _ := json.Marshal(map[string]any{"entries": []lp.SourcePublishing{{Status: "Published", SourcePackageName: "openvswitch", SourcePackageVersion: version, DistroSeriesLink: ubuntu}}})
+		return jsonResponse(200, string(data)), nil
+	}))
+	RegisterSRUAPI(srv.API(), newEphemeralTestApp(t, cfg))
+	response, err := http.Get(base + "/api/v1/sru/versions/openvswitch")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != 200 {
+		body, _ := io.ReadAll(response.Body)
+		t.Fatalf("status=%d: %s", response.StatusCode, body)
+	}
+	var got dto.SRUVersionList
+	if err := json.NewDecoder(response.Body).Decode(&got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Rows) != 2 || got.Rows[0].Query.Series != "caracal" || got.Rows[1].Query.Series != "yoga" {
+		t.Fatalf("rows=%+v", got)
+	}
+	for _, row := range got.Rows {
+		if len(row.Cells) != 4 {
+			t.Fatalf("cells=%+v", row)
+		}
+		for _, cell := range row.Cells {
+			if cell.State != "current" {
+				t.Fatalf("cross-series currency mixed: %+v", got)
+			}
+		}
+	}
+}
+
+func TestSRUPocketViewUsesCachedStagingInventoryWithoutUpstreamReads(t *testing.T) {
+	indexes := map[string]string{
+		"jammy/main":                  "Package: nova\nVersion: 3-1~cloud0\n\nPackage: openvswitch\nVersion: 2-1~cloud0\n\n",
+		"jammy-proposed/caracal/main": "Package: nova\nVersion: 2-1~cloud0\n\n",
+		"jammy-updates/caracal/main":  "Package: nova\nVersion: 1-1~cloud0\n\nPackage: openvswitch\nVersion: 2-1~cloud0\n\n",
+		"noble/main":                  "Package: nova\nVersion: 3-1\n\nPackage: openvswitch\nVersion: 2-1\n\nPackage: parent-only\nVersion: 9-1\n\n",
+		"noble-updates/main":          "Package: unrelated\nVersion: 1-1\n\n",
+		"noble-security/main":         "Package: unrelated\nVersion: 1-1\n\n",
+	}
+	reads := 0
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reads++
+		if !strings.HasSuffix(r.URL.Path, "/source/Sources.gz") {
+			w.WriteHeader(404)
+			return
+		}
+		key := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/dists/"), "/source/Sources.gz")
+		body, exists := indexes[key]
+		if !exists {
+			t.Errorf("index=%s", key)
+			w.WriteHeader(404)
+			return
+		}
+		compressed := gzip.NewWriter(w)
+		_, _ = compressed.Write([]byte(body))
+		_ = compressed.Close()
+	}))
+	defer upstream.Close()
+	cfg := &config.Config{Packages: config.PackagesConfig{Distros: map[string]config.DistroConfig{"ubuntu": {
+		Mirror: upstream.URL, Components: []string{"main"}, Releases: map[string]config.ReleaseConfig{
+			"jammy": {Backports: map[string]config.BackportConfig{"caracal": {ParentRelease: "noble", Sources: []config.DistroSourceConfig{{Mirror: upstream.URL, Suites: []string{"release", "proposed", "updates"}, Components: []string{"main"}}}}}},
+			"noble": {Suites: []string{"release", "updates", "security"}},
+		}}}}}
+	application := newEphemeralTestApp(t, cfg)
+	srv, base := startTestServer(t)
+	defer srv.Shutdown(context.Background())
+	RegisterSRUAPI(srv.API(), application)
+	response, err := http.Get(base + "/api/v1/sru/view/caracal")
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.StatusCode != 409 {
+		t.Fatalf("uncached staging status=%d", response.StatusCode)
+	}
+	cache, err := application.DistroCache()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, source := range application.BuildPackageSources([]string{"ubuntu"}, nil, nil, []string{"caracal"}) {
+		if err := cache.Update(context.Background(), source.Name, source.Entries); err != nil {
+			t.Fatal(err)
+		}
+	}
+	seededReads := reads
+	response, err = http.Get(base + "/api/v1/sru/view/caracal")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != 200 {
+		body, _ := io.ReadAll(response.Body)
+		t.Fatalf("status=%d: %s", response.StatusCode, body)
+	}
+	var got dto.SRUPocketView
+	err = json.NewDecoder(response.Body).Decode(&got)
+	response.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reads != seededReads {
+		t.Fatal("view refreshed indexes")
+	}
+	if len(got.Rows) != 2 || got.Rows[0].Query.Package != "nova" || got.Rows[1].Query.Package != "openvswitch" || len(got.CacheStatus) != 2 {
+		t.Fatalf("view=%+v", got)
+	}
+	if got.Rows[0].Cells[0].State != "current" || got.Rows[0].Cells[1].State != "current" || got.Rows[0].Cells[2].State != "behind" || got.Rows[0].Cells[3].State != "behind" {
+		t.Fatalf("nova=%+v", got.Rows[0])
+	}
+	if got.Rows[1].Cells[2].State != "empty" || got.Rows[1].Cells[3].State != "current" {
+		t.Fatalf("openvswitch=%+v", got.Rows[1])
+	}
+	// Cloud rebuilds remain distinct within UCA, even with an equal parent revision.
+	indexes["jammy/main"] = strings.ReplaceAll(indexes["jammy/main"], "3-1~cloud0", "3-1~cloud2")
+	indexes["jammy-proposed/caracal/main"] = strings.ReplaceAll(indexes["jammy-proposed/caracal/main"], "2-1~cloud0", "3-1~cloud1")
+	indexes["jammy-updates/caracal/main"] = strings.ReplaceAll(indexes["jammy-updates/caracal/main"], "1-1~cloud0", "3-1~cloud0")
+	for _, source := range application.BuildPackageSources([]string{"ubuntu"}, nil, nil, []string{"caracal"}) {
+		if source.Name == "ubuntu/caracal" {
+			if err := cache.Update(context.Background(), source.Name, source.Entries); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	cloudReads := reads
+	response, err = http.Get(base + "/api/v1/sru/view/caracal")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = json.NewDecoder(response.Body).Decode(&got)
+	response.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reads != cloudReads || got.Rows[0].Cells[1].Version != "3-1~cloud2" || got.Rows[0].Cells[2].Version != "3-1~cloud1" || got.Rows[0].Cells[0].State != "current" || got.Rows[0].Cells[1].State != "current" || got.Rows[0].Cells[2].State != "behind" || got.Rows[0].Cells[3].State != "behind" {
+		t.Fatalf("cloud rebuild currency=%+v", got)
+	}
+	// Replacing the native cache with only release models a partial sync.
+	if err := cache.Update(context.Background(), "ubuntu", []dto.SourceEntry{{Mirror: upstream.URL, Suite: "noble", Component: "main"}}); err != nil {
+		t.Fatal(err)
+	}
+	partialReads := reads
+	response, err = http.Get(base + "/api/v1/sru/view/caracal")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = json.NewDecoder(response.Body).Decode(&got)
+	response.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reads != partialReads || got.Rows[0].Cells[0].State != "unknown" || got.Rows[0].Cells[1].State != "unknown" {
+		t.Fatalf("partial cache=%+v", got)
+	}
+	for _, test := range []struct {
+		series string
+		status int
+	}{{"missing", 404}, {"Invalid", 422}} {
+		response, err := http.Get(base + "/api/v1/sru/view/" + test.series)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response.Body.Close()
+		if response.StatusCode != test.status {
+			t.Fatalf("%s status=%d", test.series, response.StatusCode)
+		}
 	}
 }
