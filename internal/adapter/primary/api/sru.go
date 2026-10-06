@@ -29,12 +29,42 @@ type sruListInput struct {
 
 type sruOutput struct{ Body dto.SRUSnapshot }
 
+type sruMigrationInput struct {
+	Package string `path:"package"`
+	Series  string `path:"series"`
+	ID      string `path:"id"`
+}
+type sruMigrationOutput struct{ Body dto.SRUMigrationChain }
+
 type sruShowInput struct {
 	ID string `path:"id"`
 }
 
 func RegisterSRUAPI(api huma.API, application *app.App) {
 	workflow := frontend.NewServerFacade(application).SRU()
+	huma.Register(api, huma.Operation{
+		OperationID: "sru-migration", Method: http.MethodGet, Path: "/api/v1/sru/migration/{package}/{series}/{id}",
+		Summary: "Inspect inferred migration chains across configured series", Tags: []string{"sru"},
+	}, func(ctx context.Context, input *sruMigrationInput) (*sruMigrationOutput, error) {
+		result, err := workflow.Migration(ctx, dto.SRUMigrationQuery{Package: input.Package, Series: input.Series, BugID: input.ID})
+		if err != nil {
+			if errors.Is(err, app.ErrSRUMigrationTarget) {
+				return nil, huma.Error404NotFound(err.Error())
+			}
+			if errors.Is(err, app.ErrSRUMigrationUnavailable) {
+				return nil, huma.NewError(http.StatusConflict, err.Error())
+			}
+			if errors.Is(err, app.ErrSRUMigrationPrivate) {
+				return nil, huma.Error403Forbidden(err.Error())
+			}
+			if errors.Is(err, app.ErrSRUMigrationQuery) {
+				return nil, huma.Error422UnprocessableEntity(err.Error())
+			}
+			return nil, huma.Error500InternalServerError(fmt.Sprintf("inspecting SRU migration: %v", err))
+		}
+		return &sruMigrationOutput{Body: *result}, nil
+	})
+
 	huma.Register(api, huma.Operation{
 		OperationID: "list-sru", Method: http.MethodGet, Path: "/api/v1/sru",
 		Summary: "List monitored OpenStack SRU targets", Tags: []string{"sru"},

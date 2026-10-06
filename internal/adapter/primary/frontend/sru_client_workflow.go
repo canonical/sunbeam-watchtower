@@ -30,3 +30,10 @@ func (w *SRUClientWorkflow) Show(ctx context.Context, id string) (*dto.SRUSnapsh
 	}
 	return w.client.SRUShow(ctx, id)
 }
+
+func (w *SRUClientWorkflow) Migration(ctx context.Context, query dto.SRUMigrationQuery) (*dto.SRUMigrationChain, error) {
+	if w.client == nil || w.client.Client == nil {
+		return nil, errors.New("no server client configured")
+	}
+	return w.client.SRUMigration(ctx, query)
+}

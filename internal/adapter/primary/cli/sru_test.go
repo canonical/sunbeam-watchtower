@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/canonical/sunbeam-watchtower/internal/adapter/primary/frontend"
+
 	"github.com/canonical/sunbeam-watchtower/pkg/client"
 	dto "github.com/canonical/sunbeam-watchtower/pkg/dto/v1"
 	"github.com/charmbracelet/lipgloss"
@@ -205,6 +207,52 @@ func TestSRUBugIDAcceptsLaunchpadURLs(t *testing.T) {
 		"https://bugs.launchpad.net:8443/+bug/2167438", "https://user@bugs.launchpad.net/+bug/2167438"} {
 		if _, err := sruBugID(raw); err == nil {
 			t.Errorf("accepted %q", raw)
+		}
+	}
+}
+
+func TestSRUMigrationCommandUsesSharedWorkflowAndShowsInference(t *testing.T) {
+	result := dto.SRUMigrationChain{ObservedAt: time.Now(), Query: dto.SRUMigrationQuery{Package: "nova", Series: "caracal", BugID: "42"}, Scope: "configured series", FirstOutstanding: []string{"uca/epoxy/occupant/updates"}, Transitions: []dto.SRUMigrationTransition{{ID: "uca/epoxy/occupant/updates", Package: "nova", Archive: "uca", Series: "epoxy", Version: "2", From: "proposed", To: "updates", State: "pending", Kind: "occupant", Reason: "inferred proposed occupancy"}}}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/v1/sru/migration/nova/caracal/42" {
+			t.Errorf("request=%s %s", r.Method, r.URL)
+		}
+		_ = json.NewEncoder(w).Encode(result)
+	}))
+	defer server.Close()
+	for _, format := range []string{"table", "json", "yaml"} {
+		var out bytes.Buffer
+		options := &Options{Out: &out, Output: format, Client: client.NewClient(server.URL)}
+		command := newSRUCmd(options)
+		command.SetArgs([]string{"chain", "nova", "--series", "caracal", "--bug-id", "https://bugs.launchpad.net/cloud-archive/+bug/42"})
+		if err := command.Execute(); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(out.String(), "uca/epoxy/occupant/updates") {
+			t.Fatalf("missing first transition in %s: %s", format, out.String())
+		}
+		if format == "table" && (!strings.Contains(out.String(), "migration eligibility is not established") || !strings.Contains(out.String(), "First outstanding")) {
+			t.Fatalf("inference boundary missing: %s", out.String())
+		}
+		leaf, _, err := command.Find([]string{"chain"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := commandActionID(leaf, nil); got != frontend.ActionSRUMigration {
+			t.Fatalf("action=%s", got)
+		}
+	}
+}
+
+func TestSRUMigrationTableKeepsUnassociatedInventoryVisible(t *testing.T) {
+	var out bytes.Buffer
+	result := &dto.SRUMigrationChain{Query: dto.SRUMigrationQuery{Package: "nova", Series: "caracal", BugID: "42"}, Inventory: []dto.SRUMigrationTarget{{Archive: "uca", Series: "yoga", Relation: "lower; fix not observed", Pockets: []dto.SRUPocketObservation{{Pocket: "proposed", Known: true, Publications: []dto.SRUPublication{{Version: "2", BugsKnown: false}}}}}}}
+	if err := renderSRUMigration(&out, result); err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{"uca/yoga", "proposed", "unknown", "lower; fix not observed"} {
+		if !strings.Contains(out.String(), expected) {
+			t.Fatalf("inventory missing %q: %s", expected, out.String())
 		}
 	}
 }

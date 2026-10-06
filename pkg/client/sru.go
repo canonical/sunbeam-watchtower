@@ -40,3 +40,10 @@ func (c *Client) SRUShow(ctx context.Context, id string) (*dto.SRUSnapshot, erro
 	err := c.get(ctx, "/api/v1/sru/"+url.PathEscape(id), nil, &result)
 	return &result, err
 }
+
+func (c *Client) SRUMigration(ctx context.Context, query dto.SRUMigrationQuery) (*dto.SRUMigrationChain, error) {
+	var result dto.SRUMigrationChain
+	path := "/api/v1/sru/migration/" + url.PathEscape(query.Package) + "/" + url.PathEscape(query.Series) + "/" + url.PathEscape(query.BugID)
+	err := c.get(ctx, path, nil, &result)
+	return &result, err
+}

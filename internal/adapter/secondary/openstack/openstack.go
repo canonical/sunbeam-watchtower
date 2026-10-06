@@ -55,6 +55,20 @@ type seriesStatus struct {
 	Status    string `yaml:"status"`
 }
 
+// ListSeries exposes the cached upstream release order (newest first).
+// Status describes upstream maintenance, not Ubuntu or UCA support.
+func (p *Provider) ListSeries(ctx context.Context) ([]dto.UpstreamSeries, error) {
+	series, err := p.seriesStatus(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]dto.UpstreamSeries, 0, len(series))
+	for _, item := range series {
+		result = append(result, dto.UpstreamSeries{Name: item.Name, ReleaseID: item.ReleaseID, Status: item.Status})
+	}
+	return result, nil
+}
+
 // DefaultRelease returns the newest non-development OpenStack release series.
 func (p *Provider) DefaultRelease(ctx context.Context) (string, error) {
 	series, err := p.seriesStatus(ctx)

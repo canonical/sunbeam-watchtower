@@ -451,3 +451,25 @@ func TestIsLifecycleVersion(t *testing.T) {
 		})
 	}
 }
+
+func TestListSeriesRetainsCachedOrderAndLifecycle(t *testing.T) {
+	repo := initTestGitRepo(t)
+	writeTestFile(t, repo, "data/series_status.yaml", `---
+- name: epoxy
+  release-id: 2025.1
+  status: maintained
+- name: caracal
+  release-id: 2024.1
+  status: unmaintained
+- name: yoga
+  status: end of life
+`)
+	commitTestRepo(t, repo)
+	got, err := NewProvider(repo, "").ListSeries(context.Background())
+	if err != nil || len(got) != 3 || got[0].Name != "epoxy" || got[1].ReleaseID != "2024.1" || got[2].Status != "end of life" || got[2].ReleaseID != "" {
+		t.Fatalf("ListSeries = %+v, %v", got, err)
+	}
+	if _, err := NewProvider(t.TempDir(), "").ListSeries(context.Background()); err == nil {
+		t.Fatal("missing upstream metadata accepted")
+	}
+}

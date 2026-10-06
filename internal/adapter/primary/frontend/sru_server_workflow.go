@@ -24,3 +24,7 @@ func (w *SRUServerWorkflow) List(_ context.Context, filter dto.SRUFilter) (*dto.
 func (w *SRUServerWorkflow) Refresh(ctx context.Context) (*dto.SRUSnapshot, error) {
 	return w.application.RefreshSRU(ctx)
 }
+
+func (w *SRUServerWorkflow) Migration(ctx context.Context, query dto.SRUMigrationQuery) (*dto.SRUMigrationChain, error) {
+	return w.application.SRUMigration(ctx, query)
+}

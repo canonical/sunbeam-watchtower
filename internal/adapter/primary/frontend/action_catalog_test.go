@@ -101,3 +101,10 @@ func TestLogsRefreshIsHiddenReadOnlyLocal(t *testing.T) {
 		t.Fatalf("ExportPolicy = %q, want hidden", desc.ExportPolicy)
 	}
 }
+
+func TestSRUMigrationAccessClassification(t *testing.T) {
+	action := DescribeAction(ActionSRUMigration)
+	if action.Mutability != MutabilityRead || action.LocalEffect != LocalEffectRead || action.RuntimeRequirement != RuntimeEmbeddedOK || action.ExportPolicy != ExportPolicyAllowed {
+		t.Fatalf("migration classification=%+v", action)
+	}
+}
