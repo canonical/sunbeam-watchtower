@@ -108,3 +108,10 @@ func TestSRUMigrationAccessClassification(t *testing.T) {
 		t.Fatalf("migration classification=%+v", action)
 	}
 }
+
+func TestSRUVersionsAccessClassification(t *testing.T) {
+	action := DescribeAction(ActionSRUVersions)
+	if action.Mutability != MutabilityRead || action.LocalEffect != LocalEffectRead || action.RuntimeRequirement != RuntimeEmbeddedOK || action.ExportPolicy != ExportPolicyAllowed {
+		t.Fatalf("versions classification=%+v", action)
+	}
+}

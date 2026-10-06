@@ -28,3 +28,11 @@ func (w *SRUServerWorkflow) Refresh(ctx context.Context) (*dto.SRUSnapshot, erro
 func (w *SRUServerWorkflow) Migration(ctx context.Context, query dto.SRUMigrationQuery) (*dto.SRUMigrationChain, error) {
 	return w.application.SRUMigration(ctx, query)
 }
+
+func (w *SRUServerWorkflow) Versions(ctx context.Context, query dto.SRUVersionsQuery) (*dto.SRUVersions, error) {
+	return w.application.SRUVersions(ctx, query)
+}
+
+func (w *SRUServerWorkflow) AllVersions(ctx context.Context, source string) (*dto.SRUVersionList, error) {
+	return w.application.SRUAllVersions(ctx, source)
+}

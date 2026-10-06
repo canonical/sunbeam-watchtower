@@ -48,6 +48,7 @@ func newSRUCmd(opts *Options) *cobra.Command {
 	list.Flags().BoolVar(&listOptions.diagnostics, "diagnostics", false, "show detailed warnings after the table")
 	cmd.AddCommand(list)
 	cmd.AddCommand(newSRUMigrationCmd(opts))
+	cmd.AddCommand(newSRUVersionsCmd(opts))
 	cmd.AddCommand(withActionID(&cobra.Command{
 		Use: "show <bug-id-or-url>", Short: "Show all monitored targets for one bug", Args: cobra.ExactArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {

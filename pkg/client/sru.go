@@ -47,3 +47,15 @@ func (c *Client) SRUMigration(ctx context.Context, query dto.SRUMigrationQuery) 
 	err := c.get(ctx, path, nil, &result)
 	return &result, err
 }
+
+func (c *Client) SRUVersions(ctx context.Context, query dto.SRUVersionsQuery) (*dto.SRUVersions, error) {
+	var result dto.SRUVersions
+	err := c.get(ctx, "/api/v1/sru/versions/"+url.PathEscape(query.Package)+"/"+url.PathEscape(query.Series), nil, &result)
+	return &result, err
+}
+
+func (c *Client) SRUAllVersions(ctx context.Context, source string) (*dto.SRUVersionList, error) {
+	var result dto.SRUVersionList
+	err := c.get(ctx, "/api/v1/sru/versions/"+url.PathEscape(source), nil, &result)
+	return &result, err
+}

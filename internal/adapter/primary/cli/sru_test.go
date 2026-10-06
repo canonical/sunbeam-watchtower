@@ -256,3 +256,62 @@ func TestSRUMigrationTableKeepsUnassociatedInventoryVisible(t *testing.T) {
 		}
 	}
 }
+
+func TestSRUVersionsCommandShowsBugIndependentCurrency(t *testing.T) {
+	result := dto.SRUVersions{Query: dto.SRUVersionsQuery{Package: "openvswitch", Series: "yoga"}, UbuntuBase: "focal", ParentSeries: "jammy", Cells: []dto.SRUVersionCell{{Label: "Ubuntu jammy", Version: "2.17.12-1", State: "current"}, {Label: "staging", Version: "2.17.12-1~cloud0", State: "current"}, {Label: "proposed", Version: "2.17.9-1~cloud0", State: "behind"}, {Label: "updates", Version: "2.17.9-1~cloud0", State: "behind"}}}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" || r.URL.Path != "/api/v1/sru/versions/openvswitch/yoga" {
+			t.Errorf("request=%s %s", r.Method, r.URL)
+		}
+		_ = json.NewEncoder(w).Encode(result)
+	}))
+	defer server.Close()
+	for _, format := range []string{"table", "json", "yaml"} {
+		var out bytes.Buffer
+		command := newSRUCmd(&Options{Out: &out, Output: format, Client: client.NewClient(server.URL)})
+		command.SetArgs([]string{"versions", "openvswitch", "--series", "yoga"})
+		if err := command.Execute(); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(out.String(), "current") || !strings.Contains(out.String(), "behind") || !strings.Contains(out.String(), "2.17.9-1~cloud0") {
+			t.Fatalf("output=%s", out.String())
+		}
+		leaf, _, err := command.Find([]string{"versions"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if commandActionID(leaf, nil) != frontend.ActionSRUVersions {
+			t.Fatal("wrong classification")
+		}
+	}
+}
+
+func TestSRUVersionsCommandDefaultsToAllSeries(t *testing.T) {
+	rows := []dto.SRUVersions{}
+	for _, series := range []string{"caracal", "yoga"} {
+		rows = append(rows, dto.SRUVersions{Query: dto.SRUVersionsQuery{Package: "openvswitch", Series: series}, Cells: []dto.SRUVersionCell{{Label: "Ubuntu parent", Version: "2-1", State: "current"}, {Label: "staging", Version: "2-1~cloud0", State: "current"}, {Label: "proposed", Version: "1-1~cloud0", State: "behind"}, {Label: "updates", Version: "1-1~cloud0", State: "behind"}}})
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/sru/versions/openvswitch" {
+			t.Errorf("path=%s", r.URL.Path)
+		}
+		_ = json.NewEncoder(w).Encode(dto.SRUVersionList{Package: "openvswitch", Rows: rows})
+	}))
+	defer server.Close()
+	for _, format := range []string{"table", "json", "yaml"} {
+		var out bytes.Buffer
+		cmd := newSRUCmd(&Options{Out: &out, Output: format, Client: client.NewClient(server.URL)})
+		cmd.SetArgs([]string{"versions", "openvswitch"})
+		if err := cmd.Execute(); err != nil {
+			t.Fatal(err)
+		}
+		for _, series := range []string{"caracal", "yoga"} {
+			if !strings.Contains(out.String(), series) {
+				t.Fatalf("missing %s: %s", series, out.String())
+			}
+		}
+		if format == "table" && strings.Count(out.String(), "Green/current") != 1 {
+			t.Fatalf("repeated legend: %s", out.String())
+		}
+	}
+}

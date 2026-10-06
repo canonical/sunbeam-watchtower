@@ -68,6 +68,7 @@ const (
 	ActionBugSyncDryRun         ActionID = "bug.sync.dry_run"
 	ActionBugSyncApply          ActionID = "bug.sync.apply"
 	ActionSRUMigration          ActionID = "sru.migration"
+	ActionSRUVersions           ActionID = "sru.versions"
 	ActionSRUList               ActionID = "sru.list"
 	ActionSRUShow               ActionID = "sru.show"
 	ActionSRUOpen               ActionID = "sru.open"
@@ -162,6 +163,7 @@ var actionCatalog = map[ActionID]ActionDescriptor{
 	ActionBugSearch:             descriptor(ActionBugSearch, "bug", "bug", MutabilityRead, LocalEffectNone, RuntimeEmbeddedOK, ExportPolicyAllowed, "Search bugs with match explanations."),
 	ActionBugSyncDryRun:         descriptor(ActionBugSyncDryRun, "bug", "bug", MutabilityRead, LocalEffectNone, RuntimeEmbeddedOK, ExportPolicyAllowed, "Preview bug synchronization."),
 	ActionBugSyncApply:          descriptor(ActionBugSyncApply, "bug", "bug", MutabilityWrite, LocalEffectNone, RuntimeEmbeddedOK, ExportPolicyAllowed, "Synchronize bug state from cached commits."),
+	ActionSRUVersions:           descriptor(ActionSRUVersions, "sru", "sru", MutabilityRead, LocalEffectRead, RuntimeEmbeddedOK, ExportPolicyAllowed, "Inspect package version currency across Ubuntu and UCA pockets."),
 	ActionSRUMigration:          descriptor(ActionSRUMigration, "sru", "sru", MutabilityRead, LocalEffectRead, RuntimeEmbeddedOK, ExportPolicyAllowed, "Inspect configured-series SRU migration chains."),
 	ActionSRUList:               descriptor(ActionSRUList, "sru", "sru", MutabilityRead, LocalEffectRead, RuntimeEmbeddedOK, ExportPolicyAllowed, "List monitored OpenStack SRUs."),
 	ActionSRUShow:               descriptor(ActionSRUShow, "sru", "sru", MutabilityRead, LocalEffectRead, RuntimeEmbeddedOK, ExportPolicyAllowed, "Show one monitored SRU."),

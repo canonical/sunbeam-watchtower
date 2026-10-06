@@ -240,3 +240,146 @@ func TestSRUMigrationAPICollectsBuglessOccupantAndIndirectDependencies(t *testin
 		t.Fatalf("bugless inventory=%+v", result.Targets)
 	}
 }
+
+func TestSRUVersionsAPINeedsNoBugsSetsOrOrdering(t *testing.T) {
+	srv, base := startTestServer(t)
+	defer srv.Shutdown(context.Background())
+	cfg := &config.Config{Packages: config.PackagesConfig{
+		Distros: map[string]config.DistroConfig{"ubuntu": {Releases: map[string]config.ReleaseConfig{
+			"focal": {Backports: map[string]config.BackportConfig{"yoga": {ParentRelease: "jammy"}}},
+		}}},
+	}}
+	failSecurity := false
+	requests := 0
+	original := http.DefaultTransport
+	withDefaultTransport(t, roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Hostname() != "api.launchpad.net" {
+			return original.RoundTrip(r)
+		}
+		if r.URL.Query().Get("ws.op") != "getPublishedSources" {
+			t.Errorf("unexpected bug/changes request: %s", r.URL)
+			return jsonResponse(http.StatusInternalServerError, `{}`), nil
+		}
+		requests++
+		if r.URL.Query().Get("source_name") != "openvswitch" {
+			t.Errorf("source filter: %s", r.URL)
+		}
+		version, ubuntu := "2.17.9-0ubuntu0.22.04.1~cloud0", "focal"
+		if strings.HasSuffix(r.URL.Path, "yoga-staging") {
+			version = "2.17.12-0ubuntu0.22.04.1~cloud0"
+		}
+		if strings.HasSuffix(r.URL.Path, "primary") {
+			ubuntu = "jammy"
+			version = "2.17.12-0ubuntu0.22.04.1"
+			if r.URL.Query().Get("pocket") == "Release" {
+				version = "2.17.0-0ubuntu1"
+			}
+			if r.URL.Query().Get("pocket") == "Security" && failSecurity {
+				return jsonResponse(http.StatusServiceUnavailable, `{}`), nil
+			}
+		}
+		data, _ := json.Marshal(map[string]any{"entries": []lp.SourcePublishing{{Status: "Published", SourcePackageName: "openvswitch", SourcePackageVersion: version, DistroSeriesLink: lp.APIBaseURL + "/ubuntu/" + ubuntu}}})
+		return jsonResponse(http.StatusOK, string(data)), nil
+	}))
+	RegisterSRUAPI(srv.API(), newEphemeralTestApp(t, cfg))
+	for _, failed := range []bool{false, true} {
+		failSecurity = failed
+		response, err := http.Get(base + "/api/v1/sru/versions/openvswitch/yoga")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got dto.SRUVersions
+		if response.StatusCode != http.StatusOK {
+			data, _ := io.ReadAll(response.Body)
+			t.Fatalf("status=%d: %s", response.StatusCode, data)
+		}
+		err = json.NewDecoder(response.Body).Decode(&got)
+		response.Body.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got.Cells) != 4 || got.Cells[0].Version != "2.17.12-0ubuntu0.22.04.1" || got.Cells[2].State != "behind" || got.Cells[3].State != "behind" {
+			t.Fatalf("versions=%+v", got)
+		}
+		want := "current"
+		if failed {
+			want = "unknown"
+		}
+		if got.Cells[0].State != want || got.Cells[1].State != want {
+			t.Fatalf("currency=%+v", got.Cells)
+		}
+	}
+	// The simulated 503 is attempted four times by the Launchpad client.
+	if requests != 15 {
+		t.Fatalf("publication requests=%d, want 15", requests)
+	}
+	for _, test := range []struct {
+		path   string
+		status int
+	}{{"openvswitch/missing", 404}, {"Invalid/yoga", 422}} {
+		response, err := http.Get(base + "/api/v1/sru/versions/" + test.path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response.Body.Close()
+		if response.StatusCode != test.status {
+			t.Fatalf("%s: status=%d", test.path, response.StatusCode)
+		}
+	}
+}
+
+func TestSRUVersionsAPIListsEveryConfiguredSeries(t *testing.T) {
+	srv, base := startTestServer(t)
+	defer srv.Shutdown(context.Background())
+	cfg := &config.Config{Packages: config.PackagesConfig{Distros: map[string]config.DistroConfig{"ubuntu": {Releases: map[string]config.ReleaseConfig{
+		"focal": {Backports: map[string]config.BackportConfig{"yoga": {ParentRelease: "jammy"}}},
+		"jammy": {Backports: map[string]config.BackportConfig{"caracal": {ParentRelease: "noble"}}},
+	}}}}}
+	original := http.DefaultTransport
+	withDefaultTransport(t, roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Hostname() != "api.launchpad.net" {
+			return original.RoundTrip(r)
+		}
+		if r.URL.Query().Get("ws.op") != "getPublishedSources" {
+			t.Errorf("unexpected request: %s", r.URL)
+			return jsonResponse(500, `{}`), nil
+		}
+		ubuntu := r.URL.Query().Get("distro_series")
+		version := "2-1"
+		if strings.HasSuffix(ubuntu, "noble") || strings.Contains(r.URL.Path, "caracal-") {
+			version = "10-1"
+		}
+		if strings.Contains(r.URL.Path, "yoga-") || strings.Contains(r.URL.Path, "caracal-") {
+			version += "~cloud0"
+		}
+		data, _ := json.Marshal(map[string]any{"entries": []lp.SourcePublishing{{Status: "Published", SourcePackageName: "openvswitch", SourcePackageVersion: version, DistroSeriesLink: ubuntu}}})
+		return jsonResponse(200, string(data)), nil
+	}))
+	RegisterSRUAPI(srv.API(), newEphemeralTestApp(t, cfg))
+	response, err := http.Get(base + "/api/v1/sru/versions/openvswitch")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != 200 {
+		body, _ := io.ReadAll(response.Body)
+		t.Fatalf("status=%d: %s", response.StatusCode, body)
+	}
+	var got dto.SRUVersionList
+	if err := json.NewDecoder(response.Body).Decode(&got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Rows) != 2 || got.Rows[0].Query.Series != "caracal" || got.Rows[1].Query.Series != "yoga" {
+		t.Fatalf("rows=%+v", got)
+	}
+	for _, row := range got.Rows {
+		if len(row.Cells) != 4 {
+			t.Fatalf("cells=%+v", row)
+		}
+		for _, cell := range row.Cells {
+			if cell.State != "current" {
+				t.Fatalf("cross-series currency mixed: %+v", got)
+			}
+		}
+	}
+}

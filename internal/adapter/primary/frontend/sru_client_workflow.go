@@ -37,3 +37,17 @@ func (w *SRUClientWorkflow) Migration(ctx context.Context, query dto.SRUMigratio
 	}
 	return w.client.SRUMigration(ctx, query)
 }
+
+func (w *SRUClientWorkflow) Versions(ctx context.Context, query dto.SRUVersionsQuery) (*dto.SRUVersions, error) {
+	if w.client == nil || w.client.Client == nil {
+		return nil, errors.New("no server client configured")
+	}
+	return w.client.SRUVersions(ctx, query)
+}
+
+func (w *SRUClientWorkflow) AllVersions(ctx context.Context, source string) (*dto.SRUVersionList, error) {
+	if w.client == nil || w.client.Client == nil {
+		return nil, errors.New("no server client configured")
+	}
+	return w.client.SRUAllVersions(ctx, source)
+}

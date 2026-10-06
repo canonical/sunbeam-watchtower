@@ -36,12 +36,48 @@ type sruMigrationInput struct {
 }
 type sruMigrationOutput struct{ Body dto.SRUMigrationChain }
 
+type sruVersionsInput struct {
+	Package string `path:"package"`
+	Series  string `path:"series"`
+}
+type sruVersionsOutput struct{ Body dto.SRUVersions }
+type sruAllVersionsInput struct {
+	Package string `path:"package"`
+}
+type sruAllVersionsOutput struct{ Body dto.SRUVersionList }
+
 type sruShowInput struct {
 	ID string `path:"id"`
 }
 
 func RegisterSRUAPI(api huma.API, application *app.App) {
 	workflow := frontend.NewServerFacade(application).SRU()
+	huma.Register(api, huma.Operation{OperationID: "sru-versions-all", Method: http.MethodGet, Path: "/api/v1/sru/versions/{package}", Summary: "Inspect version currency across every configured UCA series", Tags: []string{"sru"}}, func(ctx context.Context, input *sruAllVersionsInput) (*sruAllVersionsOutput, error) {
+		result, err := workflow.AllVersions(ctx, input.Package)
+		if err != nil {
+			if errors.Is(err, app.ErrSRUMigrationQuery) {
+				return nil, huma.Error422UnprocessableEntity(err.Error())
+			}
+			if errors.Is(err, app.ErrSRUMigrationTarget) {
+				return nil, huma.Error404NotFound(err.Error())
+			}
+			return nil, huma.Error500InternalServerError(fmt.Sprintf("inspecting SRU versions: %v", err))
+		}
+		return &sruAllVersionsOutput{Body: *result}, nil
+	})
+	huma.Register(api, huma.Operation{OperationID: "sru-versions", Method: http.MethodGet, Path: "/api/v1/sru/versions/{package}/{series}", Summary: "Inspect Ubuntu parent and UCA package version currency", Tags: []string{"sru"}}, func(ctx context.Context, input *sruVersionsInput) (*sruVersionsOutput, error) {
+		result, err := workflow.Versions(ctx, dto.SRUVersionsQuery{Package: input.Package, Series: input.Series})
+		if err != nil {
+			if errors.Is(err, app.ErrSRUMigrationQuery) {
+				return nil, huma.Error422UnprocessableEntity(err.Error())
+			}
+			if errors.Is(err, app.ErrSRUMigrationTarget) {
+				return nil, huma.Error404NotFound(err.Error())
+			}
+			return nil, huma.Error500InternalServerError(fmt.Sprintf("inspecting SRU versions: %v", err))
+		}
+		return &sruVersionsOutput{Body: *result}, nil
+	})
 	huma.Register(api, huma.Operation{
 		OperationID: "sru-migration", Method: http.MethodGet, Path: "/api/v1/sru/migration/{package}/{series}/{id}",
 		Summary: "Inspect inferred migration chains across configured series", Tags: []string{"sru"},

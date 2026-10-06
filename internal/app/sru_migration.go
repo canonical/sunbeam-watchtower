@@ -101,6 +101,10 @@ func fetchSRUMigrationTarget(ctx context.Context, client *lp.Client, changesClie
 	if target.Archive == "uca" {
 		pockets = append([]string{"staging"}, pockets...)
 	}
+	return fetchSRUPublicationTarget(ctx, client, changesClient, source, target, pockets)
+}
+
+func fetchSRUPublicationTarget(ctx context.Context, client *lp.Client, changesClient *http.Client, source string, target dto.SRUMigrationTarget, pockets []string) dto.SRUMigrationTarget {
 	target.Pockets = make([]dto.SRUPocketObservation, 0, len(pockets))
 	for _, pocket := range pockets {
 		observation := dto.SRUPocketObservation{Pocket: pocket, Publications: []dto.SRUPublication{}}
@@ -123,6 +127,10 @@ func fetchSRUMigrationTarget(ctx context.Context, client *lp.Client, changesClie
 				continue
 			}
 			item := dto.SRUPublication{Version: publication.SourcePackageVersion, URL: publication.SelfLink, BugIDs: []string{}}
+			if changesClient == nil {
+				observation.Publications = append(observation.Publications, item)
+				continue
+			}
 			changesURL, err := client.GetPublicationChangesURL(ctx, publication.SelfLink)
 			if err != nil {
 				item.Warning = err.Error()
