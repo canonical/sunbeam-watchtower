@@ -8,7 +8,8 @@ launchpad:
     - "2024.1"
     - "2025.1"
     - "2026.1"
-  development_focus: "2026.1"
+    - "2026.2"
+  development_focus: "2026.2"
 github:
   use_keyring: false
   client_id: Ov23lin1xbKE8bXlFFHq
@@ -218,7 +219,8 @@ projects:
       project: charm-rabbitmq-k8s
     series:
       - "3.12"
-    development_focus: "3.12"
+      - "4.0"
+    development_focus: "4.0"
 
 packages:
   upstream:
