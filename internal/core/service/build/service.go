@@ -530,8 +530,10 @@ func (s *Service) executeAction(ctx context.Context, pb ProjectBuilder, status R
 	case ActionRetryFailed:
 		// When the caller requested a retry budget (RetryCount > 1), defer
 		// all retry decisions to waitForBuilds so there is a single retry
-		// owner. Otherwise preserve the legacy one-shot retry behavior for
-		// callers that don't set RetryCount.
+		// owner. waitForBuilds retries each eligible build per-arch as soon as
+		// it observes it, without waiting for sibling recipes or
+		// architectures. Otherwise preserve the legacy one-shot retry
+		// behavior for callers that don't set RetryCount.
 		if opts.RetryCount > 1 {
 			result.Action = ActionMonitor
 			result.Builds = status.Builds
@@ -601,9 +603,12 @@ func buildOpts(opts TriggerOpts) dto.RequestBuildsOpts {
 	}
 }
 
-// waitForBuilds polls Launchpad for the given recipes' builds until all
-// terminal, optionally retrying failed-but-retryable builds up to retryCount-1
-// times per b.SelfLink. retryCount <= 1 disables retries (legacy behavior).
+// waitForBuilds polls Launchpad for the given recipes' builds until every
+// observed build is terminal and no accepted retry is still awaiting a
+// transition. Failed-but-retryable builds are retried during the same polling
+// pass that observes them, up to retryCount-1 times per b.SelfLink, so retries
+// overlap sibling recipes and architectures that are still building.
+// retryCount <= 1 disables retries (legacy behavior).
 func (s *Service) waitForBuilds(
 	ctx context.Context,
 	pb ProjectBuilder,
@@ -614,100 +619,271 @@ func (s *Service) waitForBuilds(
 	deadline := time.Now().Add(timeout)
 	pollInterval := s.waitPollInterval()
 
-	// remaining retries per build SelfLink. First observation seeds the
-	// budget to retryCount-1 (observation #1 = attempt #1 consumed).
-	initBudget := max(retryCount-1, 0)
-	remaining := map[string]int{}
+	observer := &waitBuildObserver{
+		initBudget: max(retryCount-1, 0),
+		trackers:   make(map[string]*buildRetryTracker),
+		lastGood:   make(map[string]dto.Build),
+	}
 
-	poll := func() ([]dto.Build, bool) {
-		var allBuilds []dto.Build
-		allTerminal := true
-		for _, recipe := range recipes {
-			builds, err := pb.Builder.ListBuilds(ctx, recipe)
-			if err != nil {
-				s.logger.Warn("error listing builds", "recipe", recipe.Name, "error", err)
-				continue
+	// listRecipe reads one recipe and feeds successful observations into the
+	// lifecycle tracker. With schedule=false it is a read-only refresh: it may
+	// acknowledge an outstanding retry but never issues a new retry POST.
+	// complete is false for a listing error or an empty build list; both mean
+	// the pass saw an incomplete view and must not count as finished.
+	listRecipe := func(recipe *dto.Recipe, schedule bool) (complete, allTerminal, retried bool) {
+		complete, allTerminal = true, true
+		builds, err := pb.Builder.ListBuilds(ctx, recipe)
+		if err != nil {
+			s.logger.Warn("error listing builds", "recipe", recipe.Name, "error", err)
+			return false, false, false
+		}
+		if len(builds) == 0 {
+			s.logger.Warn("recipe returned no builds while waiting", "recipe", recipe.Name)
+			return false, false, false
+		}
+		for _, b := range builds {
+			observer.observe(b)
+			if !b.State.IsTerminal() {
+				allTerminal = false
 			}
-			allBuilds = append(allBuilds, builds...)
+		}
+		if schedule {
 			for _, b := range builds {
-				if _, seen := remaining[b.SelfLink]; !seen {
-					remaining[b.SelfLink] = initBudget
-				}
-				if !b.State.IsTerminal() {
-					allTerminal = false
+				if s.scheduleRetry(ctx, pb, b, observer, retryCount, deadline) {
+					retried = true
 				}
 			}
 		}
-		return allBuilds, allTerminal
+		return complete, allTerminal, retried
+	}
+
+	// refresh takes a read-only snapshot across all recipes, acknowledging any
+	// retry that has visibly transitioned. It deliberately attempts reads even
+	// after cancellation so the freshest obtainable state is returned; failed
+	// reads retain the last successful observation per self-link.
+	refresh := func() {
+		for _, recipe := range recipes {
+			listRecipe(recipe, false)
+		}
+	}
+
+	poll := func() (complete, allTerminal, retried bool) {
+		complete, allTerminal = true, true
+		for _, recipe := range recipes {
+			if ctx.Err() != nil {
+				return false, false, retried
+			}
+			c, t, r := listRecipe(recipe, true)
+			if !c {
+				complete = false
+			}
+			if !t {
+				allTerminal = false
+			}
+			if r {
+				retried = true
+			}
+		}
+		return complete, allTerminal, retried
 	}
 
 	for {
 		if err := ctx.Err(); err != nil {
-			builds, _ := poll()
-			return builds, err
+			refresh()
+			return observer.snapshot(), err
 		}
 
-		allBuilds, allTerminal := poll()
+		complete, allTerminal, retried := poll()
 
-		if allTerminal {
-			retried := false
-			for i := range allBuilds {
-				b := allBuilds[i]
-				if !b.State.IsFailure() || !b.CanRetry {
-					continue
-				}
-				if remaining[b.SelfLink] <= 0 {
-					continue
-				}
-				if err := ctx.Err(); err != nil {
-					return allBuilds, err
-				}
-				attemptIndex := retryCount - remaining[b.SelfLink] + 1
-				s.logger.Info("retrying failed build",
-					"recipe", b.Recipe,
-					"build", b.SelfLink,
-					"arch", b.Arch,
-					"attempt", attemptIndex,
-					"max_attempts", retryCount,
-				)
-				if err := pb.Builder.RetryBuild(ctx, b.SelfLink); err != nil {
-					s.logger.Warn("retry call failed; giving up on this build",
-						"build", b.SelfLink, "error", err)
-					remaining[b.SelfLink] = 0
-					continue
-				}
-				remaining[b.SelfLink]--
-				retried = true
-			}
-
-			if !retried {
-				return allBuilds, nil
-			}
-
-			// Refresh the snapshot after issuing retries so any subsequent
-			// deadline/cancel return reflects the post-retry pending state
-			// rather than the stale failure state. Give LP a brief moment
-			// to transition the build before re-polling.
+		if retried {
+			// Give LP a brief moment to transition the retried builds, then
+			// take a read-only refresh so cancellation/timeout paths return the
+			// freshest obtainable state without issuing further retries.
 			select {
 			case <-ctx.Done():
-				refreshed, _ := poll()
-				return refreshed, ctx.Err()
+				refresh()
+				return observer.snapshot(), ctx.Err()
 			case <-time.After(s.waitPostRetryDelay()):
 			}
-			refreshed, _ := poll()
-			allBuilds = refreshed
+			refresh()
 		}
 
-		if time.Now().After(deadline) {
-			return allBuilds, &BuildWaitTimeoutError{Timeout: timeout, Builds: activeBuilds(allBuilds)}
+		if complete && allTerminal && !retried && !observer.anyAwaiting() {
+			return observer.snapshot(), nil
+		}
+
+		if !time.Now().Before(deadline) {
+			return observer.snapshot(), &BuildWaitTimeoutError{
+				Timeout: timeout,
+				Builds:  observer.outstanding(),
+			}
 		}
 
 		select {
 		case <-ctx.Done():
-			return allBuilds, ctx.Err()
+			refresh()
+			return observer.snapshot(), ctx.Err()
 		case <-time.After(pollInterval):
 		}
 	}
+}
+
+// buildRetryTracker is the request-local retry lifecycle for one build
+// self-link during a wait.
+type buildRetryTracker struct {
+	remaining int       // retries still available; 0 means the budget is spent
+	awaiting  bool      // a retry POST succeeded and its transition is unacknowledged
+	baseline  dto.Build // observation saved before the accepted retry POST
+}
+
+// waitBuildObserver accumulates retry lifecycle state and the latest successful
+// observation for each build self-link.
+type waitBuildObserver struct {
+	initBudget int
+	trackers   map[string]*buildRetryTracker
+	lastGood   map[string]dto.Build
+	order      []string // self-links in first-seen order, for deterministic snapshots
+}
+
+// tracker returns the lifecycle state for a self-link, seeding a fresh budget on
+// first observation.
+func (o *waitBuildObserver) tracker(selfLink string) *buildRetryTracker {
+	t, ok := o.trackers[selfLink]
+	if !ok {
+		t = &buildRetryTracker{remaining: o.initBudget}
+		o.trackers[selfLink] = t
+	}
+	return t
+}
+
+// observe records a successful observation of b, advancing the retry lifecycle
+// and updating the best-effort snapshot. Builds without a self-link are
+// ignored so unrelated malformed records cannot share a retry budget.
+func (o *waitBuildObserver) observe(b dto.Build) {
+	if b.SelfLink == "" {
+		return
+	}
+	if _, seen := o.lastGood[b.SelfLink]; !seen {
+		o.order = append(o.order, b.SelfLink)
+	}
+	o.lastGood[b.SelfLink] = b
+
+	t := o.tracker(b.SelfLink)
+	if !t.awaiting {
+		return
+	}
+	switch {
+	case b.State.IsActive():
+		// A visible active state acknowledges the retry.
+		t.awaiting = false
+	case b.State == dto.BuildSucceeded, b.State == dto.BuildSuperseded:
+		// A terminal non-failure also completes the outstanding retry.
+		t.awaiting = false
+	case b.State.IsFailure():
+		// Without an intervening active observation, a failure whose attempt
+		// timestamps advanced past the pre-retry snapshot is a new completed
+		// attempt (e.g. a retry that ran and failed entirely between polls).
+		if retryAttemptAdvanced(b, t.baseline) {
+			t.awaiting = false
+		}
+	}
+}
+
+// anyAwaiting reports whether any accepted retry is still awaiting a visible
+// transition.
+func (o *waitBuildObserver) anyAwaiting() bool {
+	for _, t := range o.trackers {
+		if t.awaiting {
+			return true
+		}
+	}
+	return false
+}
+
+// snapshot returns the latest successful observation per build, in first-seen
+// order.
+func (o *waitBuildObserver) snapshot() []dto.Build {
+	out := make([]dto.Build, 0, len(o.order))
+	for _, link := range o.order {
+		if b, ok := o.lastGood[link]; ok {
+			out = append(out, b)
+		}
+	}
+	return out
+}
+
+// outstanding returns the builds still unresolved at timeout: active builds
+// plus builds with an accepted retry that never visibly transitioned. A stale
+// terminal snapshot from an accepted retry is reported with its observed state
+// rather than dropped.
+func (o *waitBuildObserver) outstanding() []dto.Build {
+	out := make([]dto.Build, 0, len(o.order))
+	for _, link := range o.order {
+		b, ok := o.lastGood[link]
+		if !ok {
+			continue
+		}
+		t := o.trackers[link]
+		if b.State.IsActive() || (t != nil && t.awaiting) {
+			out = append(out, b)
+		}
+	}
+	return out
+}
+
+// scheduleRetry issues a retry POST for one observed build when it is an
+// eligible failure with remaining budget. It returns whether a POST succeeded.
+func (s *Service) scheduleRetry(
+	ctx context.Context,
+	pb ProjectBuilder,
+	b dto.Build,
+	observer *waitBuildObserver,
+	retryCount int,
+	deadline time.Time,
+) bool {
+	if b.SelfLink == "" || !b.State.IsFailure() || !b.CanRetry {
+		return false
+	}
+	t := observer.tracker(b.SelfLink)
+	if t.remaining <= 0 || t.awaiting {
+		return false
+	}
+	// Check cancellation and expiry before starting a mutation.
+	if ctx.Err() != nil || !time.Now().Before(deadline) {
+		return false
+	}
+
+	attemptIndex := retryCount - t.remaining + 1
+	s.logger.Info("retrying failed build",
+		"recipe", b.Recipe,
+		"build", b.SelfLink,
+		"arch", b.Arch,
+		"attempt", attemptIndex,
+		"max_attempts", retryCount,
+	)
+	if err := pb.Builder.RetryBuild(ctx, b.SelfLink); err != nil {
+		s.logger.Warn("retry call failed; giving up on this build",
+			"build", b.SelfLink, "error", err)
+		t.remaining = 0
+		return false
+	}
+	t.remaining--
+	t.awaiting = true
+	t.baseline = b
+	return true
+}
+
+// retryAttemptAdvanced reports whether a failed observation is distinguishable
+// from the pre-retry baseline because a nonzero attempt timestamp moved
+// forward. A timestamp becoming zero is not evidence of a new attempt.
+func retryAttemptAdvanced(observed, baseline dto.Build) bool {
+	if !observed.StartedAt.IsZero() && observed.StartedAt.After(baseline.StartedAt) {
+		return true
+	}
+	if !observed.BuiltAt.IsZero() && observed.BuiltAt.After(baseline.BuiltAt) {
+		return true
+	}
+	return false
 }
 
 // BuildWaitTimeoutError reports the active build snapshot captured when a
@@ -722,16 +898,6 @@ func (e *BuildWaitTimeoutError) Error() string {
 		return ""
 	}
 	return buildWaitTimeoutMessage(buildWaitTimeoutDTO(e))
-}
-
-func activeBuilds(builds []dto.Build) []dto.Build {
-	active := make([]dto.Build, 0, len(builds))
-	for _, b := range builds {
-		if b.State.IsActive() {
-			active = append(active, b)
-		}
-	}
-	return active
 }
 
 func buildWaitTimeoutDTO(err *BuildWaitTimeoutError) *dto.BuildWaitTimeout {
