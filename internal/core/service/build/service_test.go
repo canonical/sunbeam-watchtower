@@ -24,6 +24,10 @@ import (
 
 // mockRecipeBuilder implements port.RecipeBuilder for testing.
 type mockRecipeBuilder struct {
+	// mu guards the maps and result slices below; Trigger assesses recipes
+	// concurrently, so the mock must be safe for concurrent use.
+	mu sync.Mutex
+
 	artifactType dto.ArtifactType
 	recipes      map[string]*dto.Recipe       // name → recipe
 	builds       map[string][]dto.Build       // recipe SelfLink → builds
@@ -37,6 +41,11 @@ type mockRecipeBuilder struct {
 	ownerListErr error
 	retried      []string // tracks retried build self links
 
+	// retryErrFor returns a per-build error from RetryBuild, taking precedence
+	// over retryErr. It lets a test make one build's retry fail while another
+	// build's retry succeeds in the same polling pass.
+	retryErrFor map[string]error
+
 	// processorsSet tracks SetProcessors calls (recipe SelfLink → processors).
 	processorsSet map[string][]string
 
@@ -44,11 +53,21 @@ type mockRecipeBuilder struct {
 	// simulating LP transitioning the build record (e.g. Failed → Pending
 	// → Succeeded across poll cycles).
 	retryHook func(buildSelfLink string)
+
+	// listCalls counts ListBuilds invocations per recipe SelfLink (1-based).
+	listCalls map[string]int
+	// listHook, when set, runs at the start of each ListBuilds call with the
+	// recipe and its 1-based call index for that recipe. It may script state
+	// transitions (using the setState/updateBuild helpers) and may return an
+	// error to simulate a transient listing failure.
+	listHook func(recipe *dto.Recipe, call int) error
 }
 
 func (m *mockRecipeBuilder) ArtifactType() dto.ArtifactType { return m.artifactType }
 
 func (m *mockRecipeBuilder) GetRecipe(_ context.Context, _, _, name string) (*dto.Recipe, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	r, ok := m.recipes[name]
 	if !ok {
 		return nil, fmt.Errorf("recipe %q not found", name)
@@ -57,6 +76,8 @@ func (m *mockRecipeBuilder) GetRecipe(_ context.Context, _, _, name string) (*dt
 }
 
 func (m *mockRecipeBuilder) CreateRecipe(_ context.Context, opts dto.CreateRecipeOpts) (*dto.Recipe, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.createErr != nil {
 		return nil, m.createErr
 	}
@@ -74,6 +95,8 @@ func (m *mockRecipeBuilder) CreateRecipe(_ context.Context, opts dto.CreateRecip
 func (m *mockRecipeBuilder) DeleteRecipe(_ context.Context, _ string) error { return nil }
 
 func (m *mockRecipeBuilder) SetProcessors(_ context.Context, recipe *dto.Recipe, processors []string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.processorsSet == nil {
 		m.processorsSet = make(map[string][]string)
 	}
@@ -84,6 +107,8 @@ func (m *mockRecipeBuilder) SetProcessors(_ context.Context, recipe *dto.Recipe,
 }
 
 func (m *mockRecipeBuilder) RequestBuilds(_ context.Context, recipe *dto.Recipe, _ dto.RequestBuildsOpts) (*dto.BuildRequest, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.requestErr != nil {
 		return nil, m.requestErr
 	}
@@ -105,6 +130,17 @@ func (m *mockRecipeBuilder) RequestBuilds(_ context.Context, recipe *dto.Recipe,
 }
 
 func (m *mockRecipeBuilder) ListBuilds(_ context.Context, recipe *dto.Recipe) ([]dto.Build, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.listCalls == nil {
+		m.listCalls = make(map[string]int)
+	}
+	m.listCalls[recipe.SelfLink]++
+	if m.listHook != nil {
+		if err := m.listHook(recipe, m.listCalls[recipe.SelfLink]); err != nil {
+			return nil, err
+		}
+	}
 	if m.listErr != nil {
 		return nil, m.listErr
 	}
@@ -112,7 +148,14 @@ func (m *mockRecipeBuilder) ListBuilds(_ context.Context, recipe *dto.Recipe) ([
 }
 
 func (m *mockRecipeBuilder) RetryBuild(_ context.Context, buildSelfLink string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.retried = append(m.retried, buildSelfLink)
+	if m.retryErrFor != nil {
+		if err, ok := m.retryErrFor[buildSelfLink]; ok && err != nil {
+			return err
+		}
+	}
 	if m.retryErr != nil {
 		return m.retryErr
 	}
@@ -125,10 +168,14 @@ func (m *mockRecipeBuilder) RetryBuild(_ context.Context, buildSelfLink string) 
 func (m *mockRecipeBuilder) CancelBuild(_ context.Context, _ string) error { return nil }
 
 func (m *mockRecipeBuilder) GetBuildFileURLs(_ context.Context, buildSelfLink string) ([]string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	return m.fileURLs[buildSelfLink], nil
 }
 
 func (m *mockRecipeBuilder) ListRecipesByOwner(_ context.Context, _ string) ([]*dto.Recipe, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.ownerListErr != nil {
 		return nil, m.ownerListErr
 	}
@@ -1256,12 +1303,20 @@ func newRetryService(t *testing.T, builder *mockRecipeBuilder) *Service {
 // setState replaces builds[recipeSelfLink] with a copy that sets the given
 // build SelfLink to the requested state. Preserves other builds untouched.
 func setState(builder *mockRecipeBuilder, recipeSelfLink, buildSelfLink string, state dto.BuildState) {
+	updateBuild(builder, recipeSelfLink, buildSelfLink, func(b *dto.Build) {
+		b.State = state
+	})
+}
+
+// updateBuild replaces builds[recipeSelfLink] with a copy and applies mutate to
+// the matching build SelfLink, preserving all other builds untouched.
+func updateBuild(builder *mockRecipeBuilder, recipeSelfLink, buildSelfLink string, mutate func(*dto.Build)) {
 	src := builder.builds[recipeSelfLink]
 	out := make([]dto.Build, len(src))
 	copy(out, src)
 	for i := range out {
 		if out[i].SelfLink == buildSelfLink {
-			out[i].State = state
+			mutate(&out[i])
 		}
 	}
 	builder.builds[recipeSelfLink] = out
@@ -1346,8 +1401,14 @@ func TestTrigger_Wait_RetryCount3_FailsAllAttempts(t *testing.T) {
 			},
 		},
 	}
-	// retryHook leaves state as Failed — build keeps failing forever.
-	builder.retryHook = func(string) {}
+	// Each accepted retry starts a new attempt that also fails. Advance the
+	// attempt timestamp so the next poll recognizes the new failure as a
+	// distinct completed attempt rather than a stale snapshot of the old one.
+	builder.retryHook = func(selfLink string) {
+		updateBuild(builder, "/recipe/keystone", selfLink, func(b *dto.Build) {
+			b.BuiltAt = b.BuiltAt.Add(time.Second)
+		})
+	}
 	svc := newRetryService(t, builder)
 
 	result, err := svc.Trigger(context.Background(), "sunbeam", nil, TriggerOpts{
@@ -1443,10 +1504,17 @@ func TestTrigger_Wait_RetryCount3_MultiArchIndependence(t *testing.T) {
 			},
 		},
 	}
-	// Only arch A transitions to Succeeded on its first retry.
+	// Arch A transitions to Succeeded on its first retry. Arch C fails on
+	// every attempt; advance its attempt timestamp so the next poll treats it
+	// as a new attempt and spends C's second retry.
 	builder.retryHook = func(selfLink string) {
-		if selfLink == "/build/A" {
+		switch selfLink {
+		case "/build/A":
 			setState(builder, "/recipe/keystone", "/build/A", dto.BuildSucceeded)
+		case "/build/C":
+			updateBuild(builder, "/recipe/keystone", "/build/C", func(b *dto.Build) {
+				b.BuiltAt = b.BuiltAt.Add(time.Second)
+			})
 		}
 	}
 	svc := newRetryService(t, builder)
@@ -1510,8 +1578,13 @@ func TestTrigger_Wait_RetryCount3_DefersFromActionRetryFailed(t *testing.T) {
 			},
 		},
 	}
-	// Fail forever so we can count retry calls exactly.
-	builder.retryHook = func(string) {}
+	// Each accepted retry starts a new attempt that also fails. Advance the
+	// attempt timestamp so every retry is recognized as a distinct attempt.
+	builder.retryHook = func(selfLink string) {
+		updateBuild(builder, "/recipe/keystone", selfLink, func(b *dto.Build) {
+			b.BuiltAt = b.BuiltAt.Add(time.Second)
+		})
+	}
 	svc := newRetryService(t, builder)
 
 	_, err := svc.Trigger(context.Background(), "sunbeam", nil, TriggerOpts{
